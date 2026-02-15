@@ -82,6 +82,61 @@ test {
 }
 
 test {
+  // Hamster dies when divined (public log looks like bite)
+  let creatures: Array[@jinro.Creature] = [
+    { id: "s", role: { role_type: "seer", metadata: Map::new() } },
+    { id: "h", role: { role_type: "hamster", metadata: Map::new() } },
+    { id: "v", role: { role_type: "villager", metadata: Map::new() } },
+  ]
+  let (v0, _t0) = @jinro.create_village(creatures, ({ vote: "public" } : @jinro.Rule))
+  let (_v1, r1) = @jinro.process_day(v0, ([
+    { actor: "s", action_type: "divine", target: Some("h") },
+  ] : Array[@jinro.Action]))
+
+  // death record should contain true cause
+  if not(r1.deaths.length() == 1) { panic() }
+  if not(r1.deaths[0].creature_id == "h") { panic() }
+  if not(r1.deaths[0].reason == "hamster_curse") { panic() }
+
+  // logs: in-game (All) is indistinguishable and Afterall has true cause
+  let mut has_public = false
+  let mut has_afterall = false
+  for l in r1.logs {
+    match l.receivers {
+      @jinro.Receivers::All => {
+        if l.action_type == "unknown" && l.target == Some("h") && l.result == Some("dead") {
+          has_public = true
+        }
+      }
+      @jinro.Receivers::Afterall => {
+        if l.action_type == "hamster_curse" && l.target == Some("h") && l.result == Some("dead") {
+          has_afterall = true
+        }
+      }
+      _ => ()
+    }
+  }
+  if not(has_public && has_afterall) { panic() }
+}
+
+test {
+  // Hamster wins solo if alive at game end
+  let creatures: Array[@jinro.Creature] = [
+    { id: "h", role: { role_type: "hamster", metadata: Map::new() } },
+    { id: "w", role: { role_type: "wolf", metadata: Map::new() } },
+    { id: "v", role: { role_type: "villager", metadata: Map::new() } },
+  ]
+  let (v0, _t0) = @jinro.create_village(creatures, ({ vote: "public" } : @jinro.Rule))
+  let (v1, _r1) = @jinro.process_day(v0, [])
+  let (_v2, r2) = @jinro.process_day(v1, ([
+    { actor: "h", action_type: "vote", target: Some("w") },
+    { actor: "v", action_type: "vote", target: Some("w") },
+    { actor: "w", action_type: "vote", target: Some("v") },
+  ] : Array[@jinro.Action]))
+  if not(r2.today.game_result == Some("hamster")) { panic() }
+}
+
+test {
   // Guard prevents bite
   let creatures: Array[@jinro.Creature] = [
     { id: "w", role: { role_type: "wolf", metadata: Map::new() } },

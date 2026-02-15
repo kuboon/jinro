@@ -8,16 +8,19 @@ const ROLE_WOLF: RoleType = "wolf"
 const ROLE_LOVER: RoleType = "lover"
 const ROLE_BITCH: RoleType = "bitch"
 const ROLE_MEDIUM: RoleType = "medium"
+const ROLE_HAMSTER: RoleType = "hamster"
 
 // ActionType constants
 const ACTION_VOTE: ActionType = "vote"
 const ACTION_BITE: ActionType = "bite"
+const ACTION_UNKNOWN: ActionType = "unknown"
 const ACTION_GUARD: ActionType = "guard"
 const ACTION_DIVINE: ActionType = "divine"
 const ACTION_LOVE: ActionType = "love"
 const ACTION_FAKE_LOVE: ActionType = "fake_love"
 const ACTION_LOVERS_SUICIDE: ActionType = "lovers_suicide"
 const ACTION_MEDIUM: ActionType = "medium"
+const ACTION_HAMSTER_CURSE: ActionType = "hamster_curse"
 
 fn current_day(village: Village) -> Int {
   village.days.length()
@@ -33,6 +36,17 @@ fn team_of(role_type: RoleType) -> Team {
   }
 }
 
+fn is_hamster_alive(village: Village) -> Bool {
+  for c in village.creatures {
+    if c.role.role_type == ROLE_HAMSTER {
+      if is_alive(village, c.id) {
+        return true
+      }
+    }
+  }
+  false
+}
+
 fn role_of(village: Village, id: CreatureId) -> RoleType? {
   for c in village.creatures {
     if c.id == id {
@@ -45,10 +59,16 @@ fn role_of(village: Village, id: CreatureId) -> RoleType? {
 fn is_dead_by_logs(village: Village, id: CreatureId) -> Bool {
   for d in village.days {
     for l in d.logs {
-      match (l.target, l.result) {
-        (Some(t), Some(r)) => {
-          if t == id && r == "dead" {
-            return true
+      // Death should be determined by the in-game visible logs.
+      match l.receivers {
+        Receivers::All => {
+          match (l.target, l.result) {
+            (Some(t), Some(r)) => {
+              if t == id && r == "dead" {
+                return true
+              }
+            }
+            _ => ()
           }
         }
         _ => ()
@@ -98,10 +118,16 @@ fn alive_non_wolf_ids(village: Village) -> Array[CreatureId] {
 fn cause_of_death(village: Village, id: CreatureId) -> String? {
   for d in village.days {
     for l in d.logs {
-      match (l.target, l.result) {
-        (Some(t), Some(r)) => {
-          if t == id && r == "dead" {
-            return Some(l.action_type)
+      // In-game cause should not reveal hidden reasons.
+      match l.receivers {
+        Receivers::All => {
+          match (l.target, l.result) {
+            (Some(t), Some(r)) => {
+              if t == id && r == "dead" {
+                return Some(l.action_type)
+              }
+            }
+            _ => ()
           }
         }
         _ => ()
@@ -182,6 +208,8 @@ fn can_do_action(role_type: RoleType, action_type: ActionType, day_number: Int) 
     ((action_type == ACTION_LOVE || action_type == ACTION_FAKE_LOVE) && day_number == 1) || (action_type == ACTION_VOTE && day_number >= 2)
   } else if role_type == ROLE_MEDIUM {
     action_type == ACTION_VOTE && day_number >= 2
+  } else if role_type == ROLE_HAMSTER {
+    action_type == ACTION_VOTE && day_number >= 2
   } else {
     false
   }
@@ -227,6 +255,8 @@ pub fn get_available_actions(village: Village, creature_id: CreatureId) -> Array
 }
 
 fn winner(village: Village) -> Team? {
+  let mut base: Team? = None
+
   // Lovers win if the last two survivors are partnered.
   let alive = alive_ids(village)
   if alive.length() == 2 {
@@ -235,7 +265,7 @@ fn winner(village: Village) -> Team? {
     let pa = partner_of(village, [], a)
     let pb = partner_of(village, [], b)
     if pa == Some(b) && pb == Some(a) {
-      return Some("lovers")
+      base = Some("lovers")
     }
   }
 
@@ -251,13 +281,24 @@ fn winner(village: Village) -> Team? {
       }
     }
   }
-  if wolves == 0 {
-    return Some("villagers")
+  if base is None {
+    if wolves == 0 {
+      base = Some("villagers")
+    } else if wolves >= villagers {
+      base = Some("wolves")
+    }
   }
-  if wolves >= villagers {
-    return Some("wolves")
+
+  // Hamster wins solo if alive at game end.
+  match base {
+    Some(_) => {
+      if is_hamster_alive(village) {
+        return Some("hamster")
+      }
+      base
+    }
+    None => None
   }
-  None
 }
 
 fn build_status(village: Village, id: CreatureId) -> CreatureStatus {
@@ -352,18 +393,28 @@ fn guarded_target(actions: Array[Action]) -> CreatureId? {
   None
 }
 
-fn executed_by_vote(logs: Array[Log]) -> CreatureId? {
-  for l in logs {
-    if l.action_type == ACTION_VOTE && l.result == Some("dead") {
-      return l.target
-    }
+fn public_death_action(true_cause: ActionType) -> ActionType {
+  if true_cause == ACTION_BITE || true_cause == ACTION_LOVERS_SUICIDE || true_cause == ACTION_HAMSTER_CURSE {
+    ACTION_UNKNOWN
+  } else {
+    true_cause
   }
-  None
 }
 
 pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayResult) {
   let next_day_number = current_day(village) + 1
   let mut logs: Array[Log] = []
+
+  // deaths for this day (true causes)
+  let mut death_ids: Array[CreatureId] = []
+  let mut death_causes: Array[ActionType] = []
+
+  fn add_death(id: CreatureId, cause: ActionType) -> Unit {
+    if not(contains_id(death_ids, id)) {
+      death_ids = [..death_ids, id]
+      death_causes = [..death_causes, cause]
+    }
+  }
 
   // Night actions
   let guarded = guarded_target(actions)
@@ -379,7 +430,12 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
               Some(t) => {
                 let target_role = role_of(village, t)
                 match target_role {
-                  Some(tr) => logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ACTION_DIVINE, actor: Some(a.actor), target: Some(t), result: Some(tr) }]
+                  Some(tr) => {
+                    logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ACTION_DIVINE, actor: Some(a.actor), target: Some(t), result: Some(tr) }]
+                    if tr == ROLE_HAMSTER {
+                      add_death(t, ACTION_HAMSTER_CURSE)
+                    }
+                  }
                   None => ()
                 }
               }
@@ -435,7 +491,9 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
           if guarded == Some(t) {
             logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ACTION_BITE, actor: Some(a.actor), target: Some(t), result: Some("guarded") }]
           } else {
-            logs = [..logs, { receivers: Receivers::All, action_type: ACTION_BITE, actor: Some(a.actor), target: Some(t), result: Some("dead") }]
+            // Only the wolf gets the action result.
+            logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ACTION_BITE, actor: Some(a.actor), target: Some(t), result: Some("dead") }]
+            add_death(t, ACTION_BITE)
           }
         }
         None => ()
@@ -447,62 +505,37 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
   if next_day_number >= 2 {
     let voted = compute_vote_death(actions)
     match voted {
-      Some(t) => logs = [..logs, { receivers: Receivers::All, action_type: ACTION_VOTE, actor: None, target: Some(t), result: Some("dead") }]
+      Some(t) => add_death(t, ACTION_VOTE)
       None => ()
     }
   }
 
-  // deaths (including lovers suicide)
-  let mut death_ids: Array[CreatureId] = []
-  let mut deaths: Array[DeathRecord] = []
-  for l in logs {
-    match (l.target, l.result) {
-      (Some(t), Some(r)) => {
-        if r == "dead" {
-          if not(contains_id(death_ids, t)) {
-            death_ids = [..death_ids, t]
-          }
-          deaths = [..deaths, { creature_id: t, reason: l.action_type }]
-        }
-      }
-      _ => ()
-    }
-  }
-
   // medium: reveal whether executed by vote was a wolf
-  let executed = executed_by_vote(logs)
-  match executed {
-    Some(exe) => {
-      let exe_role = role_of(village, exe)
-      let mut is_wolf = false
-      match exe_role {
-        Some(rt) => {
-          if team_of(rt) == "wolves" {
-            is_wolf = true
+  if next_day_number >= 2 {
+    let voted = compute_vote_death(actions)
+    match voted {
+      Some(exe) => {
+        let exe_role = role_of(village, exe)
+        let mut is_wolf = false
+        match exe_role {
+          Some(rt) => {
+            if team_of(rt) == "wolves" {
+              is_wolf = true
+            }
           }
+          None => ()
         }
-        None => ()
-      }
-
-      for c in village.creatures {
-        if c.role.role_type == ROLE_MEDIUM {
-          if is_alive(village, c.id) && not(contains_id(death_ids, c.id)) {
-            let res = if is_wolf { "wolf" } else { "not_wolf" }
-            logs = [
-              ..logs,
-              {
-                receivers: Receivers::Only([c.id]),
-                action_type: ACTION_MEDIUM,
-                actor: Some(c.id),
-                target: Some(exe),
-                result: Some(res),
-              },
-            ]
+        for c in village.creatures {
+          if c.role.role_type == ROLE_MEDIUM {
+            if is_alive(village, c.id) && not(contains_id(death_ids, c.id)) {
+              let res = if is_wolf { "wolf" } else { "not_wolf" }
+              logs = [..logs, { receivers: Receivers::Only([c.id]), action_type: ACTION_MEDIUM, actor: Some(c.id), target: Some(exe), result: Some(res) }]
+            }
           }
         }
       }
+      None => ()
     }
-    None => ()
   }
 
   let mut i = 0
@@ -512,14 +545,27 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
     match partner {
       Some(p) => {
         if is_alive(village, p) && not(contains_id(death_ids, p)) {
-          death_ids = [..death_ids, p]
-          logs = [..logs, { receivers: Receivers::All, action_type: ACTION_LOVERS_SUICIDE, actor: None, target: Some(p), result: Some("dead") }]
-          deaths = [..deaths, { creature_id: p, reason: ACTION_LOVERS_SUICIDE }]
+          add_death(p, ACTION_LOVERS_SUICIDE)
         }
       }
       None => ()
     }
     i = i + 1
+  }
+
+  // publish deaths (in-game vs afterall)
+  let mut deaths: Array[DeathRecord] = []
+  let mut idx = 0
+  while idx < death_ids.length() {
+    let id = death_ids[idx]
+    let cause = death_causes[idx]
+    let pub_action = public_death_action(cause)
+    // in-game visible log
+    logs = [..logs, { receivers: Receivers::All, action_type: pub_action, actor: None, target: Some(id), result: Some("dead") }]
+    // after game disclosure
+    logs = [..logs, { receivers: Receivers::Afterall, action_type: cause, actor: None, target: Some(id), result: Some("dead") }]
+    deaths = [..deaths, { creature_id: id, reason: cause }]
+    idx = idx + 1
   }
 
   let day: Day = { day_number: next_day_number, actions, logs }
