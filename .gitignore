@@ -1,2 +1,3 @@
 core/_build/
 *.wasm
+**/pkg.generated.mbti

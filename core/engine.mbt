@@ -1,0 +1,371 @@
+// Jinro core engine (stateless)
+
+// RoleType constants
+const ROLE_VILLAGER: RoleType = "villager"
+const ROLE_SEER: RoleType = "seer"
+const ROLE_BODYGUARD: RoleType = "bodyguard"
+const ROLE_WOLF: RoleType = "wolf"
+const ROLE_LOVER: RoleType = "lover"
+
+// ActionType constants
+const ACTION_VOTE: ActionType = "vote"
+const ACTION_BITE: ActionType = "bite"
+const ACTION_GUARD: ActionType = "guard"
+const ACTION_DIVINE: ActionType = "divine"
+const ACTION_LOVE: ActionType = "love"
+
+fn current_day(village: Village) -> Int {
+  village.days.length()
+}
+
+fn team_of(role_type: RoleType) -> Team {
+  if role_type == ROLE_WOLF {
+    "wolves"
+  } else if role_type == ROLE_LOVER {
+    "lovers"
+  } else {
+    "villagers"
+  }
+}
+
+fn role_of(village: Village, id: CreatureId) -> RoleType? {
+  for c in village.creatures {
+    if c.id == id {
+      return Some(c.role.role_type)
+    }
+  }
+  None
+}
+
+fn is_dead_by_logs(village: Village, id: CreatureId) -> Bool {
+  for d in village.days {
+    for l in d.logs {
+      match (l.target, l.result) {
+        (Some(t), Some(r)) => {
+          if t == id && r == "dead" {
+            return true
+          }
+        }
+        _ => ()
+      }
+    }
+  }
+  false
+}
+
+fn is_alive(village: Village, id: CreatureId) -> Bool {
+  not(is_dead_by_logs(village, id))
+}
+
+fn alive_ids(village: Village) -> Array[CreatureId] {
+  let mut ids: Array[CreatureId] = []
+  for c in village.creatures {
+    if is_alive(village, c.id) {
+      ids = [..ids, c.id]
+    }
+  }
+  ids
+}
+
+fn alive_ids_except(village: Village, me: CreatureId) -> Array[CreatureId] {
+  let mut ids: Array[CreatureId] = []
+  for id in alive_ids(village) {
+    if id != me {
+      ids = [..ids, id]
+    }
+  }
+  ids
+}
+
+fn alive_non_wolf_ids(village: Village) -> Array[CreatureId] {
+  let mut ids: Array[CreatureId] = []
+  for c in village.creatures {
+    if is_alive(village, c.id) {
+      let t = team_of(c.role.role_type)
+      if t != "wolves" {
+        ids = [..ids, c.id]
+      }
+    }
+  }
+  ids
+}
+
+fn cause_of_death(village: Village, id: CreatureId) -> String? {
+  for d in village.days {
+    for l in d.logs {
+      match (l.target, l.result) {
+        (Some(t), Some(r)) => {
+          if t == id && r == "dead" {
+            return Some(l.action_type)
+          }
+        }
+        _ => ()
+      }
+    }
+  }
+  None
+}
+
+fn can_do_action(role_type: RoleType, action_type: ActionType, day_number: Int) -> Bool {
+  // day_number is 0 at setup (no actions)
+  if role_type == ROLE_VILLAGER {
+    action_type == ACTION_VOTE && day_number >= 2
+  } else if role_type == ROLE_SEER {
+    (action_type == ACTION_DIVINE && day_number == 1) || (action_type == ACTION_VOTE && day_number >= 2)
+  } else if role_type == ROLE_BODYGUARD {
+    (action_type == ACTION_GUARD && day_number >= 1) || (action_type == ACTION_VOTE && day_number >= 2)
+  } else if role_type == ROLE_WOLF {
+    (action_type == ACTION_BITE && day_number >= 1) || (action_type == ACTION_VOTE && day_number >= 2)
+  } else if role_type == ROLE_LOVER {
+    (action_type == ACTION_LOVE && day_number == 1) || (action_type == ACTION_VOTE && day_number >= 2)
+  } else {
+    false
+  }
+}
+
+pub fn get_available_actions(village: Village, creature_id: CreatureId) -> Array[AvailableAction] {
+  if not(is_alive(village, creature_id)) {
+    return []
+  }
+  let day_number = current_day(village)
+  let role_type_opt = role_of(village, creature_id)
+  match role_type_opt {
+    None => []
+    Some(role_type) => {
+      let mut out: Array[AvailableAction] = []
+      // vote
+      if can_do_action(role_type, ACTION_VOTE, day_number) {
+        out = [..out, { action_type: ACTION_VOTE, targets: alive_ids_except(village, creature_id) }]
+      }
+      // divine
+      if can_do_action(role_type, ACTION_DIVINE, day_number) {
+        out = [..out, { action_type: ACTION_DIVINE, targets: alive_ids_except(village, creature_id) }]
+      }
+      // guard
+      if can_do_action(role_type, ACTION_GUARD, day_number) {
+        out = [..out, { action_type: ACTION_GUARD, targets: alive_ids(village) }]
+      }
+      // bite
+      if can_do_action(role_type, ACTION_BITE, day_number) {
+        out = [..out, { action_type: ACTION_BITE, targets: alive_non_wolf_ids(village) }]
+      }
+      // love
+      if can_do_action(role_type, ACTION_LOVE, day_number) {
+        out = [..out, { action_type: ACTION_LOVE, targets: alive_ids_except(village, creature_id) }]
+      }
+      out
+    }
+  }
+}
+
+fn winner(village: Village) -> Team? {
+  let mut wolves = 0
+  let mut villagers = 0
+  let mut lovers = 0
+  for c in village.creatures {
+    if is_alive(village, c.id) {
+      match team_of(c.role.role_type) {
+        "wolves" => wolves = wolves + 1
+        "lovers" => lovers = lovers + 1
+        _ => villagers = villagers + 1
+      }
+    }
+  }
+  if wolves == 0 {
+    return Some("villagers")
+  }
+  if wolves >= villagers {
+    return Some("wolves")
+  }
+  if villagers == 0 && wolves == 0 && lovers > 0 {
+    return Some("lovers")
+  }
+  None
+}
+
+fn build_status(village: Village, id: CreatureId) -> CreatureStatus {
+  let mut role_type: RoleType = ROLE_VILLAGER
+  for c in village.creatures {
+    if c.id == id {
+      role_type = c.role.role_type
+    }
+  }
+  let t = team_of(role_type)
+  let alive = is_alive(village, id)
+  let status: Result = if alive { "alive" } else { "dead" }
+  let actions = if alive { get_available_actions(village, id) } else { [] }
+  let cod = if alive { None } else { cause_of_death(village, id) }
+  {
+    id,
+    role_type,
+    team: t,
+    status,
+    available_actions: actions,
+    cause_of_death: cod,
+  }
+}
+
+fn build_today(village: Village) -> Today {
+  let day_number = current_day(village)
+  let mut alive_creatures: Array[CreatureStatus] = []
+  let mut all_creatures: Array[CreatureStatus] = []
+  for c in village.creatures {
+    let st = build_status(village, c.id)
+    all_creatures = [..all_creatures, st]
+    if st.status == "alive" {
+      alive_creatures = [..alive_creatures, st]
+    }
+  }
+  {
+    day_number,
+    alive_creatures,
+    all_creatures,
+    game_result: winner(village),
+  }
+}
+
+pub fn create_village(creatures: Array[Creature], rule: Rule) -> (Village, Today) {
+  let village: Village = { rule, creatures, days: [] }
+  (village, build_today(village))
+}
+
+fn compute_vote_death(actions: Array[Action]) -> CreatureId? {
+  let votes: Map[CreatureId, Int] = Map::new()
+  for a in actions {
+    if a.action_type == ACTION_VOTE {
+      match a.target {
+        Some(t) => {
+          let cur = votes.get(t).unwrap_or(0)
+          votes.set(t, cur + 1)
+        }
+        None => ()
+      }
+    }
+  }
+
+  let mut max = 0
+  for _k, v in votes {
+    if v > max {
+      max = v
+    }
+  }
+  if max == 0 {
+    return None
+  }
+
+  let mut best: CreatureId? = None
+  let mut tie = false
+  for k, v in votes {
+    if v == max {
+      match best {
+        None => best = Some(k)
+        Some(_) => tie = true
+      }
+    }
+  }
+  if tie { None } else { best }
+}
+
+fn guarded_target(actions: Array[Action]) -> CreatureId? {
+  for a in actions {
+    if a.action_type == ACTION_GUARD {
+      return a.target
+    }
+  }
+  None
+}
+
+pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayResult) {
+  let next_day_number = current_day(village) + 1
+  let mut logs: Array[Log] = []
+
+  // Night actions
+  let guarded = guarded_target(actions)
+
+  // divine
+  for a in actions {
+    if a.action_type == ACTION_DIVINE {
+      let rt = role_of(village, a.actor)
+      match rt {
+        Some(seer_role) => {
+          if seer_role == ROLE_SEER {
+            match a.target {
+              Some(t) => {
+                let target_role = role_of(village, t)
+                match target_role {
+                  Some(tr) => logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ACTION_DIVINE, actor: Some(a.actor), target: Some(t), result: Some(tr) }]
+                  None => ()
+                }
+              }
+              None => ()
+            }
+          }
+        }
+        None => ()
+      }
+    }
+  }
+
+  // guard log (private)
+  for a in actions {
+    if a.action_type == ACTION_GUARD {
+      logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ACTION_GUARD, actor: Some(a.actor), target: a.target, result: Some("guarded") }]
+    }
+  }
+
+  // love log (private to both)
+  for a in actions {
+    if a.action_type == ACTION_LOVE {
+      match a.target {
+        Some(t) => logs = [..logs, { receivers: Receivers::Only([a.actor, t]), action_type: ACTION_LOVE, actor: Some(a.actor), target: Some(t), result: Some("partnered") }]
+        None => ()
+      }
+    }
+  }
+
+  // bite (death handled here)
+  for a in actions {
+    if a.action_type == ACTION_BITE {
+      match a.target {
+        Some(t) => {
+          if guarded == Some(t) {
+            logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ACTION_BITE, actor: Some(a.actor), target: Some(t), result: Some("guarded") }]
+          } else {
+            logs = [..logs, { receivers: Receivers::All, action_type: ACTION_BITE, actor: Some(a.actor), target: Some(t), result: Some("dead") }]
+          }
+        }
+        None => ()
+      }
+    }
+  }
+
+  // vote (day >= 2)
+  if next_day_number >= 2 {
+    let voted = compute_vote_death(actions)
+    match voted {
+      Some(t) => logs = [..logs, { receivers: Receivers::All, action_type: ACTION_VOTE, actor: None, target: Some(t), result: Some("dead") }]
+      None => ()
+    }
+  }
+
+  let day: Day = { day_number: next_day_number, actions, logs }
+  let days: Array[Day] = [..village.days, day]
+  let new_village: Village = { rule: village.rule, creatures: village.creatures, days }
+
+  // deaths
+  let mut deaths: Array[DeathRecord] = []
+  for l in day.logs {
+    match (l.target, l.result) {
+      (Some(t), Some(r)) => {
+        if r == "dead" {
+          deaths = [..deaths, { creature_id: t, reason: l.action_type }]
+        }
+      }
+      _ => ()
+    }
+  }
+
+  let today = build_today(new_village)
+  let result: DayResult = { today, logs: day.logs, deaths }
+  (new_village, result)
+}
