@@ -6,6 +6,7 @@ const ROLE_SEER: RoleType = "seer"
 const ROLE_BODYGUARD: RoleType = "bodyguard"
 const ROLE_WOLF: RoleType = "wolf"
 const ROLE_LOVER: RoleType = "lover"
+const ROLE_BITCH: RoleType = "bitch"
 
 // ActionType constants
 const ACTION_VOTE: ActionType = "vote"
@@ -13,6 +14,7 @@ const ACTION_BITE: ActionType = "bite"
 const ACTION_GUARD: ActionType = "guard"
 const ACTION_DIVINE: ActionType = "divine"
 const ACTION_LOVE: ActionType = "love"
+const ACTION_FAKE_LOVE: ActionType = "fake_love"
 const ACTION_LOVERS_SUICIDE: ActionType = "lovers_suicide"
 
 fn current_day(village: Village) -> Int {
@@ -112,6 +114,16 @@ fn partner_in_logs(logs: Array[Log], id: CreatureId) -> CreatureId? {
     if l.action_type == ACTION_LOVE && l.result == Some("partnered") {
       match (l.actor, l.target) {
         (Some(a), Some(t)) => {
+          // Partnership is only formed if this love log is shared to both sides.
+          // This allows fake love to show a "love" log to the target without forming a partnership.
+          match l.receivers {
+            Receivers::Only(rs) => {
+              if not(contains_id(rs, a) && contains_id(rs, t)) {
+                continue
+              }
+            }
+            _ => continue
+          }
           if a == id {
             return Some(t)
           }
@@ -164,6 +176,8 @@ fn can_do_action(role_type: RoleType, action_type: ActionType, day_number: Int) 
     (action_type == ACTION_BITE && day_number >= 1) || (action_type == ACTION_VOTE && day_number >= 2)
   } else if role_type == ROLE_LOVER {
     (action_type == ACTION_LOVE && day_number == 1) || (action_type == ACTION_VOTE && day_number >= 2)
+  } else if role_type == ROLE_BITCH {
+    ((action_type == ACTION_LOVE || action_type == ACTION_FAKE_LOVE) && day_number == 1) || (action_type == ACTION_VOTE && day_number >= 2)
   } else {
     false
   }
@@ -198,6 +212,10 @@ pub fn get_available_actions(village: Village, creature_id: CreatureId) -> Array
       // love
       if can_do_action(role_type, ACTION_LOVE, day_number) {
         out = [..out, { action_type: ACTION_LOVE, targets: alive_ids_except(village, creature_id) }]
+      }
+      // fake love (bitch only)
+      if can_do_action(role_type, ACTION_FAKE_LOVE, day_number) {
+        out = [..out, { action_type: ACTION_FAKE_LOVE, targets: alive_ids_except(village, creature_id) }]
       }
       out
     }
@@ -373,6 +391,24 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
     if a.action_type == ACTION_LOVE {
       match a.target {
         Some(t) => logs = [..logs, { receivers: Receivers::Only([a.actor, t]), action_type: ACTION_LOVE, actor: Some(a.actor), target: Some(t), result: Some("partnered") }]
+        None => ()
+      }
+    }
+  }
+
+  // fake love: target receives a love log but no partnership is formed
+  for a in actions {
+    if a.action_type == ACTION_FAKE_LOVE {
+      let rt = role_of(village, a.actor)
+      match rt {
+        Some(r) => {
+          if r == ROLE_BITCH {
+            match a.target {
+              Some(t) => logs = [..logs, { receivers: Receivers::Only([t]), action_type: ACTION_LOVE, actor: Some(a.actor), target: Some(t), result: Some("partnered") }]
+              None => ()
+            }
+          }
+        }
         None => ()
       }
     }

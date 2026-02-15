@@ -71,6 +71,62 @@ test {
 }
 
 test {
+  // Bitch can do love and fake_love on day 1
+  let creatures: Array[@jinro.Creature] = [
+    { id: "b", role: { role_type: "bitch", metadata: Map::new() } },
+    { id: "p", role: { role_type: "villager", metadata: Map::new() } },
+  ]
+  let (v0, _t0) = @jinro.create_village(creatures, ({ vote: "public" } : @jinro.Rule))
+  let (v1, _r1) = @jinro.process_day(v0, [])
+  let acts = @jinro.get_available_actions(v1, "b")
+  let mut has_love = false
+  let mut has_fake = false
+  for a in acts {
+    if a.action_type == "love" {
+      has_love = true
+    }
+    if a.action_type == "fake_love" {
+      has_fake = true
+    }
+  }
+  if not(has_love && has_fake) { panic() }
+}
+
+test {
+  // fake_love shows love log to target but does not form partnership
+  let creatures: Array[@jinro.Creature] = [
+    { id: "b", role: { role_type: "bitch", metadata: Map::new() } },
+    { id: "p", role: { role_type: "villager", metadata: Map::new() } },
+    { id: "w", role: { role_type: "wolf", metadata: Map::new() } },
+  ]
+  let (v0, _t0) = @jinro.create_village(creatures, ({ vote: "public" } : @jinro.Rule))
+  let (_v1, r1) = @jinro.process_day(v0, ([
+    { actor: "b", action_type: "fake_love", target: Some("p") },
+    { actor: "w", action_type: "bite", target: Some("p") },
+  ] : Array[@jinro.Action]))
+  if not(r1.deaths.length() == 1) { panic() }
+  if not(r1.deaths[0].creature_id == "p") { panic() }
+}
+
+test {
+  // Bitch love is real love and can lead to lovers win
+  let creatures: Array[@jinro.Creature] = [
+    { id: "b", role: { role_type: "bitch", metadata: Map::new() } },
+    { id: "p", role: { role_type: "villager", metadata: Map::new() } },
+    { id: "w", role: { role_type: "wolf", metadata: Map::new() } },
+  ]
+  let (v0, _t0) = @jinro.create_village(creatures, ({ vote: "public" } : @jinro.Rule))
+  let (v1, _r1) = @jinro.process_day(v0, ([
+    { actor: "b", action_type: "love", target: Some("p") },
+  ] : Array[@jinro.Action]))
+  let (_v2, r2) = @jinro.process_day(v1, ([
+    { actor: "b", action_type: "vote", target: Some("w") },
+    { actor: "p", action_type: "vote", target: Some("w") },
+  ] : Array[@jinro.Action]))
+  if not(r2.today.game_result == Some("lovers")) { panic() }
+}
+
+test {
   // Lover commits suicide when partner dies
   let creatures: Array[@jinro.Creature] = [
     { id: "l", role: { role_type: "lover", metadata: Map::new() } },
