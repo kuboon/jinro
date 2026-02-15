@@ -13,6 +13,7 @@ const ACTION_BITE: ActionType = "bite"
 const ACTION_GUARD: ActionType = "guard"
 const ACTION_DIVINE: ActionType = "divine"
 const ACTION_LOVE: ActionType = "love"
+const ACTION_LOVERS_SUICIDE: ActionType = "lovers_suicide"
 
 fn current_day(village: Village) -> Int {
   village.days.length()
@@ -106,6 +107,51 @@ fn cause_of_death(village: Village, id: CreatureId) -> String? {
   None
 }
 
+fn partner_in_logs(logs: Array[Log], id: CreatureId) -> CreatureId? {
+  for l in logs {
+    if l.action_type == ACTION_LOVE && l.result == Some("partnered") {
+      match (l.actor, l.target) {
+        (Some(a), Some(t)) => {
+          if a == id {
+            return Some(t)
+          }
+          if t == id {
+            return Some(a)
+          }
+        }
+        _ => ()
+      }
+    }
+  }
+  None
+}
+
+fn partner_of(village: Village, day_logs: Array[Log], id: CreatureId) -> CreatureId? {
+  let p = partner_in_logs(day_logs, id)
+  match p {
+    Some(_) => p
+    None => {
+      for d in village.days {
+        let q = partner_in_logs(d.logs, id)
+        match q {
+          Some(_) => return q
+          None => ()
+        }
+      }
+      None
+    }
+  }
+}
+
+fn contains_id(ids: Array[CreatureId], id: CreatureId) -> Bool {
+  for x in ids {
+    if x == id {
+      return true
+    }
+  }
+  false
+}
+
 fn can_do_action(role_type: RoleType, action_type: ActionType, day_number: Int) -> Bool {
   // day_number is 0 at setup (no actions)
   if role_type == ROLE_VILLAGER {
@@ -159,6 +205,18 @@ pub fn get_available_actions(village: Village, creature_id: CreatureId) -> Array
 }
 
 fn winner(village: Village) -> Team? {
+  // Lovers win if the last two survivors are partnered.
+  let alive = alive_ids(village)
+  if alive.length() == 2 {
+    let a = alive[0]
+    let b = alive[1]
+    let pa = partner_of(village, [], a)
+    let pb = partner_of(village, [], b)
+    if pa == Some(b) && pb == Some(a) {
+      return Some("lovers")
+    }
+  }
+
   let mut wolves = 0
   let mut villagers = 0
   let mut lovers = 0
@@ -176,9 +234,6 @@ fn winner(village: Village) -> Team? {
   }
   if wolves >= villagers {
     return Some("wolves")
-  }
-  if villagers == 0 && wolves == 0 && lovers > 0 {
-    return Some("lovers")
   }
   None
 }
@@ -348,22 +403,43 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
     }
   }
 
-  let day: Day = { day_number: next_day_number, actions, logs }
-  let days: Array[Day] = [..village.days, day]
-  let new_village: Village = { rule: village.rule, creatures: village.creatures, days }
-
-  // deaths
+  // deaths (including lovers suicide)
+  let mut death_ids: Array[CreatureId] = []
   let mut deaths: Array[DeathRecord] = []
-  for l in day.logs {
+  for l in logs {
     match (l.target, l.result) {
       (Some(t), Some(r)) => {
         if r == "dead" {
+          if not(contains_id(death_ids, t)) {
+            death_ids = [..death_ids, t]
+          }
           deaths = [..deaths, { creature_id: t, reason: l.action_type }]
         }
       }
       _ => ()
     }
   }
+
+  let mut i = 0
+  while i < death_ids.length() {
+    let dead = death_ids[i]
+    let partner = partner_of(village, logs, dead)
+    match partner {
+      Some(p) => {
+        if is_alive(village, p) && not(contains_id(death_ids, p)) {
+          death_ids = [..death_ids, p]
+          logs = [..logs, { receivers: Receivers::All, action_type: ACTION_LOVERS_SUICIDE, actor: None, target: Some(p), result: Some("dead") }]
+          deaths = [..deaths, { creature_id: p, reason: ACTION_LOVERS_SUICIDE }]
+        }
+      }
+      None => ()
+    }
+    i = i + 1
+  }
+
+  let day: Day = { day_number: next_day_number, actions, logs }
+  let days: Array[Day] = [..village.days, day]
+  let new_village: Village = { rule: village.rule, creatures: village.creatures, days }
 
   let today = build_today(new_village)
   let result: DayResult = { today, logs: day.logs, deaths }

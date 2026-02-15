@@ -69,3 +69,51 @@ test {
   ] : Array[@jinro.Action]))
   if not(r1.deaths.length() == 0) { panic() }
 }
+
+test {
+  // Lover commits suicide when partner dies
+  let creatures: Array[@jinro.Creature] = [
+    { id: "l", role: { role_type: "lover", metadata: Map::new() } },
+    { id: "p", role: { role_type: "villager", metadata: Map::new() } },
+    { id: "w", role: { role_type: "wolf", metadata: Map::new() } },
+  ]
+  let (v0, _t0) = @jinro.create_village(creatures, ({ vote: "public" } : @jinro.Rule))
+  let (_v1, r1) = @jinro.process_day(v0, ([
+    { actor: "l", action_type: "love", target: Some("p") },
+    { actor: "w", action_type: "bite", target: Some("p") },
+  ] : Array[@jinro.Action]))
+
+  if not(r1.deaths.length() == 2) { panic() }
+
+  fn find_reason(deaths: Array[@jinro.DeathRecord], id: String) -> String? {
+    for d in deaths {
+      if d.creature_id == id {
+        return Some(d.reason)
+      }
+    }
+    None
+  }
+
+  if not(find_reason(r1.deaths, "p") == Some("bite")) { panic() }
+  if not(find_reason(r1.deaths, "l") == Some("lovers_suicide")) { panic() }
+}
+
+test {
+  // Lovers win when last two survivors are partnered
+  let creatures: Array[@jinro.Creature] = [
+    { id: "l", role: { role_type: "lover", metadata: Map::new() } },
+    { id: "p", role: { role_type: "villager", metadata: Map::new() } },
+    { id: "w", role: { role_type: "wolf", metadata: Map::new() } },
+  ]
+  let (v0, _t0) = @jinro.create_village(creatures, ({ vote: "public" } : @jinro.Rule))
+  let (v1, _r1) = @jinro.process_day(v0, ([
+    { actor: "l", action_type: "love", target: Some("p") },
+  ] : Array[@jinro.Action]))
+
+  let (_v2, r2) = @jinro.process_day(v1, ([
+    { actor: "l", action_type: "vote", target: Some("w") },
+    { actor: "p", action_type: "vote", target: Some("w") },
+  ] : Array[@jinro.Action]))
+
+  if not(r2.today.game_result == Some("lovers")) { panic() }
+}
