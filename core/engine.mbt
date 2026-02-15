@@ -7,6 +7,7 @@ const ROLE_BODYGUARD: RoleType = "bodyguard"
 const ROLE_WOLF: RoleType = "wolf"
 const ROLE_LOVER: RoleType = "lover"
 const ROLE_BITCH: RoleType = "bitch"
+const ROLE_MEDIUM: RoleType = "medium"
 
 // ActionType constants
 const ACTION_VOTE: ActionType = "vote"
@@ -16,6 +17,7 @@ const ACTION_DIVINE: ActionType = "divine"
 const ACTION_LOVE: ActionType = "love"
 const ACTION_FAKE_LOVE: ActionType = "fake_love"
 const ACTION_LOVERS_SUICIDE: ActionType = "lovers_suicide"
+const ACTION_MEDIUM: ActionType = "medium"
 
 fn current_day(village: Village) -> Int {
   village.days.length()
@@ -178,6 +180,8 @@ fn can_do_action(role_type: RoleType, action_type: ActionType, day_number: Int) 
     (action_type == ACTION_LOVE && day_number == 1) || (action_type == ACTION_VOTE && day_number >= 2)
   } else if role_type == ROLE_BITCH {
     ((action_type == ACTION_LOVE || action_type == ACTION_FAKE_LOVE) && day_number == 1) || (action_type == ACTION_VOTE && day_number >= 2)
+  } else if role_type == ROLE_MEDIUM {
+    action_type == ACTION_VOTE && day_number >= 2
   } else {
     false
   }
@@ -348,6 +352,15 @@ fn guarded_target(actions: Array[Action]) -> CreatureId? {
   None
 }
 
+fn executed_by_vote(logs: Array[Log]) -> CreatureId? {
+  for l in logs {
+    if l.action_type == ACTION_VOTE && l.result == Some("dead") {
+      return l.target
+    }
+  }
+  None
+}
+
 pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayResult) {
   let next_day_number = current_day(village) + 1
   let mut logs: Array[Log] = []
@@ -454,6 +467,42 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
       }
       _ => ()
     }
+  }
+
+  // medium: reveal whether executed by vote was a wolf
+  let executed = executed_by_vote(logs)
+  match executed {
+    Some(exe) => {
+      let exe_role = role_of(village, exe)
+      let mut is_wolf = false
+      match exe_role {
+        Some(rt) => {
+          if team_of(rt) == "wolves" {
+            is_wolf = true
+          }
+        }
+        None => ()
+      }
+
+      for c in village.creatures {
+        if c.role.role_type == ROLE_MEDIUM {
+          if is_alive(village, c.id) && not(contains_id(death_ids, c.id)) {
+            let res = if is_wolf { "wolf" } else { "not_wolf" }
+            logs = [
+              ..logs,
+              {
+                receivers: Receivers::Only([c.id]),
+                action_type: ACTION_MEDIUM,
+                actor: Some(c.id),
+                target: Some(exe),
+                result: Some(res),
+              },
+            ]
+          }
+        }
+      }
+    }
+    None => ()
   }
 
   let mut i = 0

@@ -41,6 +41,32 @@ test {
 }
 
 test {
+  // Medium can see if the executed person was a wolf
+  let creatures: Array[@jinro.Creature] = [
+    { id: "m", role: { role_type: "medium", metadata: Map::new() } },
+    { id: "w", role: { role_type: "wolf", metadata: Map::new() } },
+    { id: "v", role: { role_type: "villager", metadata: Map::new() } },
+  ]
+  let (v0, _t0) = @jinro.create_village(creatures, ({ vote: "public" } : @jinro.Rule))
+  let (v1, _r1) = @jinro.process_day(v0, []) // advance to day 1
+  let (_v2, r2) = @jinro.process_day(v1, ([
+    { actor: "m", action_type: "vote", target: Some("w") },
+    { actor: "v", action_type: "vote", target: Some("w") },
+    { actor: "w", action_type: "vote", target: Some("v") },
+  ] : Array[@jinro.Action]))
+
+  let mut ok = false
+  for l in r2.logs {
+    if l.action_type == "medium" {
+      if l.actor == Some("m") && l.target == Some("w") && l.result == Some("wolf") {
+        ok = true
+      }
+    }
+  }
+  if not(ok) { panic() }
+}
+
+test {
   // Bite kills if not guarded
   let creatures: Array[@jinro.Creature] = [
     { id: "w", role: { role_type: "wolf", metadata: Map::new() } },
