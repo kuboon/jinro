@@ -1,0 +1,43 @@
+{
+  "source_dir": "/home/kuboon/repos/github.com/kuboon/jinro/core",
+  "name": "kuboon/jinro",
+  "packages": [
+    {
+      "is-main": false,
+      "is-third-party": false,
+      "root-path": "/home/kuboon/repos/github.com/kuboon/jinro/core",
+      "root": "kuboon/jinro",
+      "rel": "",
+      "files": {},
+      "wbtest-files": {},
+      "test-files": {},
+      "mbt-md-files": {},
+      "deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/kuboon/.moon/lib/core/prelude"
+        }
+      ],
+      "wbtest-deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/kuboon/.moon/lib/core/prelude"
+        }
+      ],
+      "test-deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/kuboon/.moon/lib/core/prelude"
+        }
+      ],
+      "artifact": "/home/kuboon/repos/github.com/kuboon/jinro/core/_build/wasm-gc/release/check/jinro.mi"
+    }
+  ],
+  "deps": [],
+  "backend": "wasm-gc",
+  "opt_level": "release",
+  "source": null
+}
