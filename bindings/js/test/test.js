@@ -1,12 +1,68 @@
 /**
- * Simple test for the Jinro engine JavaScript bindings.
+ * Tests for the Jinro engine.
  *
- * Run via:  npm test  (from bindings/js/)
- * This builds the WASM component from src/impl.js and runs the tests against
- * the generated JS bindings.
+ * Loads the real MoonBit wasm-gc binary built from `core/` and exercises the
+ * three JSON-string exports:
+ *   create_village_json  /  process_day_json  /  get_available_actions_json
+ *
+ * The MoonBit package is compiled with `use-js-builtin-string: true`, so
+ * MoonBit String ↔ JS string conversion is handled natively by V8's
+ * js-string-builtins; no manual memory encoding is required.
+ *
+ * Usage (from repo root):
+ *   node bindings/js/test/test.js <path-to-jinro.wasm>
  */
 
-import { createVillage, processDay, getAvailableActions } from '../gen/jinro.component.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Accept an explicit WASM path from the command line, or fall back to the
+// default output path of `moon build --target wasm-gc` run from core/.
+const wasmPath =
+  process.argv[2] ??
+  resolve(__dirname, '../../../core/target/wasm-gc/release/build/jinro.wasm');
+
+const wasmBytes = (() => {
+  try {
+    return readFileSync(wasmPath);
+  } catch {
+    console.error(
+      `Error: WASM file not found at ${wasmPath}\n` +
+      'Build it first with: cd core && moon build --target wasm-gc'
+    );
+    process.exit(1);
+  }
+})();
+
+// Instantiate with js-string-builtins so MoonBit String ↔ JS string natively.
+let instance;
+try {
+  ({ instance } = await WebAssembly.instantiate(wasmBytes, {}, {
+    builtins: ['js-string'],
+  }));
+} catch (e) {
+  if (e instanceof TypeError && e.message.includes('builtins')) {
+    console.error(
+      'Error: WebAssembly js-string-builtins not supported.\n' +
+      'This test requires Node.js 22 or later.'
+    );
+    process.exit(1);
+  }
+  throw e;
+}
+
+const {
+  create_village_json: createVillage,
+  process_day_json: processDay,
+  get_available_actions_json: getAvailableActions,
+} = instance.exports;
+
+// ---------------------------------------------------------------------------
+// Tiny test harness
+// ---------------------------------------------------------------------------
 
 let passed = 0;
 let failed = 0;
@@ -144,3 +200,4 @@ if (failed > 0) {
   for (const msg of failedTests) console.error(`  - ${msg}`);
   process.exit(1);
 }
+

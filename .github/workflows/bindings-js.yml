@@ -16,19 +16,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Build MoonBit WASM (wasm-gc)
+        run: cd core && moon build --target wasm-gc
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Install jco
-        run: npm install -g @bytecodealliance/jco
-
-      - name: Install JS binding dependencies
-        run: cd bindings/js && npm install
-
-      - name: Build JS bindings (componentize + transpile)
-        run: cd bindings/js && npm run build
+          node-version: '22'
 
       - name: Run JS tests
-        run: cd bindings/js && node test/test.js
+        run: |
+          WASM=core/target/wasm-gc/release/build/jinro.wasm
+          if [ ! -f "$WASM" ]; then
+            echo "WASM file not found at $WASM; searching..."
+            WASM=$(find core/target/wasm-gc -name "*.wasm" | grep -v test | head -1)
+          fi
+          echo "Using WASM: $WASM"
+          node bindings/js/test/test.js "$WASM"

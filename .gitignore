@@ -1,4 +1,5 @@
 core/_build/
+core/target/
 *.wasm
 **/pkg.generated.mbti
 bindings/js/gen/

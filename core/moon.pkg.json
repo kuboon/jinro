@@ -1,0 +1,11 @@
+{
+  "link": {
+    "wasm": {
+      "exports": ["create_village_json", "process_day_json", "get_available_actions_json"]
+    },
+    "wasm-gc": {
+      "use-js-builtin-string": true,
+      "exports": ["create_village_json", "process_day_json", "get_available_actions_json"]
+    }
+  }
+}

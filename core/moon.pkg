@@ -1,10 +1,1 @@
-{
-  "link": {
-    "wasm": {
-      "exports": ["process_day_json", "create_village_json", "get_available_actions_json"]
-    },
-    "wasm-gc": {
-      "exports": ["process_day_json", "create_village_json", "get_available_actions_json"]
-    }
-  }
-}
+{}
