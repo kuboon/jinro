@@ -1,3 +1,5 @@
 core/_build/
 *.wasm
 **/pkg.generated.mbti
+bindings/js/gen/
+bindings/js/node_modules/

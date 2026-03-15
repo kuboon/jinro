@@ -1,0 +1,18 @@
+{
+  "name": "@kuboon/jinro",
+  "version": "0.1.0",
+  "description": "JavaScript bindings for the Jinro (Werewolf) game engine",
+  "type": "module",
+  "scripts": {
+    "componentize": "mkdir -p gen && jco componentize src/impl.js --wit ../../wit/world.wit -n jinro -o gen/jinro.component.wasm",
+    "transpile": "jco transpile gen/jinro.component.wasm -o gen/",
+    "build": "npm run componentize && npm run transpile",
+    "test": "npm run build && node test/test.js"
+  },
+  "devDependencies": {
+    "@bytecodealliance/jco": "^1.16.1"
+  },
+  "dependencies": {
+    "@bytecodealliance/preview2-shim": "^0.17.8"
+  }
+}

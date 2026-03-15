@@ -1,0 +1,37 @@
+package kuboon:jinro@0.1.0;
+
+/// Jinro (Werewolf) game engine interface.
+///
+/// All functions accept and return JSON-encoded strings to keep the interface
+/// simple and language-agnostic.
+world jinro {
+  /// Creates a new village from JSON-encoded creatures array and rule object.
+  ///
+  /// Input:
+  ///   creatures-json: JSON array of Creature objects
+  ///     e.g. [{"id":"p1","role":{"role_type":"villager","metadata":{}}}]
+  ///   rule-json: JSON Rule object
+  ///     e.g. {"vote":"public"}
+  ///
+  /// Output: JSON object {"village": Village, "today": Today}
+  export create-village: func(creatures-json: string, rule-json: string) -> string;
+
+  /// Processes one day given JSON-encoded village and actions array.
+  ///
+  /// Input:
+  ///   village-json: JSON Village object (from a previous create-village or process-day call)
+  ///   actions-json: JSON array of Action objects
+  ///     e.g. [{"actor":"p1","action_type":"vote","target":"p2"}]
+  ///
+  /// Output: JSON object {"village": Village, "result": DayResult}
+  export process-day: func(village-json: string, actions-json: string) -> string;
+
+  /// Returns available actions for a specific creature in the current village state.
+  ///
+  /// Input:
+  ///   village-json: JSON Village object
+  ///   creature-id: creature ID string
+  ///
+  /// Output: JSON array of AvailableAction objects
+  export get-available-actions: func(village-json: string, creature-id: string) -> string;
+}
