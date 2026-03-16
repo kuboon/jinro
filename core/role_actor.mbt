@@ -355,86 +355,142 @@ impl RoleActor for HamsterActor with override_winner(village, self_id, base) {
   }
 }
 
+priv enum RoleActorEnum {
+  Villager
+  Seer
+  Bodyguard
+  Wolf
+  Madman
+  Lover
+  Bitch
+  Medium
+  Hamster
+}
+
+fn role_actor_from_type(role_type: RoleType) -> RoleActorEnum {
+  match role_type {
+    RoleType::Villager => RoleActorEnum::Villager
+    RoleType::Seer => RoleActorEnum::Seer
+    RoleType::Bodyguard => RoleActorEnum::Bodyguard
+    RoleType::Wolf => RoleActorEnum::Wolf
+    RoleType::Madman => RoleActorEnum::Madman
+    RoleType::Lover => RoleActorEnum::Lover
+    RoleType::Bitch => RoleActorEnum::Bitch
+    RoleType::Medium => RoleActorEnum::Medium
+    RoleType::Hamster => RoleActorEnum::Hamster
+  }
+}
+
+fn RoleActorEnum::team(self: RoleActorEnum) -> Team {
+  match self {
+    RoleActorEnum::Villager => VillagerActor::team()
+    RoleActorEnum::Seer => SeerActor::team()
+    RoleActorEnum::Bodyguard => BodyguardActor::team()
+    RoleActorEnum::Wolf => WolfActor::team()
+    RoleActorEnum::Madman => MadmanActor::team()
+    RoleActorEnum::Lover => LoverActor::team()
+    RoleActorEnum::Bitch => BitchActor::team()
+    RoleActorEnum::Medium => MediumActor::team()
+    RoleActorEnum::Hamster => HamsterActor::team()
+  }
+}
+
+fn RoleActorEnum::available_actions(
+  self: RoleActorEnum,
+  village: Village,
+  creature_id: CreatureId,
+  day_number: Int,
+) -> Array[AvailableAction] {
+  match self {
+    RoleActorEnum::Villager => VillagerActor::available_actions(village, creature_id, day_number)
+    RoleActorEnum::Seer => SeerActor::available_actions(village, creature_id, day_number)
+    RoleActorEnum::Bodyguard => BodyguardActor::available_actions(village, creature_id, day_number)
+    RoleActorEnum::Wolf => WolfActor::available_actions(village, creature_id, day_number)
+    RoleActorEnum::Madman => MadmanActor::available_actions(village, creature_id, day_number)
+    RoleActorEnum::Lover => LoverActor::available_actions(village, creature_id, day_number)
+    RoleActorEnum::Bitch => BitchActor::available_actions(village, creature_id, day_number)
+    RoleActorEnum::Medium => MediumActor::available_actions(village, creature_id, day_number)
+    RoleActorEnum::Hamster => HamsterActor::available_actions(village, creature_id, day_number)
+  }
+}
+
+fn RoleActorEnum::resolve_action(
+  self: RoleActorEnum,
+  village: Village,
+  action: Action,
+  guarded: CreatureId?,
+) -> RoleEffectResult {
+  match self {
+    RoleActorEnum::Villager => VillagerActor::resolve_action(village, action, guarded)
+    RoleActorEnum::Seer => SeerActor::resolve_action(village, action, guarded)
+    RoleActorEnum::Bodyguard => BodyguardActor::resolve_action(village, action, guarded)
+    RoleActorEnum::Wolf => WolfActor::resolve_action(village, action, guarded)
+    RoleActorEnum::Madman => MadmanActor::resolve_action(village, action, guarded)
+    RoleActorEnum::Lover => LoverActor::resolve_action(village, action, guarded)
+    RoleActorEnum::Bitch => BitchActor::resolve_action(village, action, guarded)
+    RoleActorEnum::Medium => MediumActor::resolve_action(village, action, guarded)
+    RoleActorEnum::Hamster => HamsterActor::resolve_action(village, action, guarded)
+  }
+}
+
+fn RoleActorEnum::on_death(
+  self: RoleActorEnum,
+  village: Village,
+  day_logs: Array[Log],
+  self_id: CreatureId,
+  dead_id: CreatureId,
+) -> RoleEffectResult {
+  match self {
+    RoleActorEnum::Villager => VillagerActor::on_death(village, day_logs, self_id, dead_id)
+    RoleActorEnum::Seer => SeerActor::on_death(village, day_logs, self_id, dead_id)
+    RoleActorEnum::Bodyguard => BodyguardActor::on_death(village, day_logs, self_id, dead_id)
+    RoleActorEnum::Wolf => WolfActor::on_death(village, day_logs, self_id, dead_id)
+    RoleActorEnum::Madman => MadmanActor::on_death(village, day_logs, self_id, dead_id)
+    RoleActorEnum::Lover => LoverActor::on_death(village, day_logs, self_id, dead_id)
+    RoleActorEnum::Bitch => BitchActor::on_death(village, day_logs, self_id, dead_id)
+    RoleActorEnum::Medium => MediumActor::on_death(village, day_logs, self_id, dead_id)
+    RoleActorEnum::Hamster => HamsterActor::on_death(village, day_logs, self_id, dead_id)
+  }
+}
+
+fn RoleActorEnum::on_executed(
+  self: RoleActorEnum,
+  village: Village,
+  self_id: CreatureId,
+  executed_id: CreatureId,
+) -> RoleEffectResult {
+  match self {
+    RoleActorEnum::Villager => VillagerActor::on_executed(village, self_id, executed_id)
+    RoleActorEnum::Seer => SeerActor::on_executed(village, self_id, executed_id)
+    RoleActorEnum::Bodyguard => BodyguardActor::on_executed(village, self_id, executed_id)
+    RoleActorEnum::Wolf => WolfActor::on_executed(village, self_id, executed_id)
+    RoleActorEnum::Madman => MadmanActor::on_executed(village, self_id, executed_id)
+    RoleActorEnum::Lover => LoverActor::on_executed(village, self_id, executed_id)
+    RoleActorEnum::Bitch => BitchActor::on_executed(village, self_id, executed_id)
+    RoleActorEnum::Medium => MediumActor::on_executed(village, self_id, executed_id)
+    RoleActorEnum::Hamster => HamsterActor::on_executed(village, self_id, executed_id)
+  }
+}
+
+fn RoleActorEnum::override_winner(
+  self: RoleActorEnum,
+  village: Village,
+  self_id: CreatureId,
+  base: Team?,
+) -> Team? {
+  match self {
+    RoleActorEnum::Villager => VillagerActor::override_winner(village, self_id, base)
+    RoleActorEnum::Seer => SeerActor::override_winner(village, self_id, base)
+    RoleActorEnum::Bodyguard => BodyguardActor::override_winner(village, self_id, base)
+    RoleActorEnum::Wolf => WolfActor::override_winner(village, self_id, base)
+    RoleActorEnum::Madman => MadmanActor::override_winner(village, self_id, base)
+    RoleActorEnum::Lover => LoverActor::override_winner(village, self_id, base)
+    RoleActorEnum::Bitch => BitchActor::override_winner(village, self_id, base)
+    RoleActorEnum::Medium => MediumActor::override_winner(village, self_id, base)
+    RoleActorEnum::Hamster => HamsterActor::override_winner(village, self_id, base)
+  }
+}
+
 fn role_team_of(role_type: RoleType) -> Team {
-  match role_type {
-    RoleType::Villager => VillagerActor::team()
-    RoleType::Seer => SeerActor::team()
-    RoleType::Bodyguard => BodyguardActor::team()
-    RoleType::Wolf => WolfActor::team()
-    RoleType::Madman => MadmanActor::team()
-    RoleType::Lover => LoverActor::team()
-    RoleType::Bitch => BitchActor::team()
-    RoleType::Medium => MediumActor::team()
-    RoleType::Hamster => HamsterActor::team()
-  }
-}
-
-fn role_available_actions(role_type: RoleType, village: Village, creature_id: CreatureId, day_number: Int) -> Array[AvailableAction] {
-  match role_type {
-    RoleType::Villager => VillagerActor::available_actions(village, creature_id, day_number)
-    RoleType::Seer => SeerActor::available_actions(village, creature_id, day_number)
-    RoleType::Bodyguard => BodyguardActor::available_actions(village, creature_id, day_number)
-    RoleType::Wolf => WolfActor::available_actions(village, creature_id, day_number)
-    RoleType::Madman => MadmanActor::available_actions(village, creature_id, day_number)
-    RoleType::Lover => LoverActor::available_actions(village, creature_id, day_number)
-    RoleType::Bitch => BitchActor::available_actions(village, creature_id, day_number)
-    RoleType::Medium => MediumActor::available_actions(village, creature_id, day_number)
-    RoleType::Hamster => HamsterActor::available_actions(village, creature_id, day_number)
-  }
-}
-
-fn role_resolve_action(role_type: RoleType, village: Village, action: Action, guarded: CreatureId?) -> RoleEffectResult {
-  match role_type {
-    RoleType::Villager => VillagerActor::resolve_action(village, action, guarded)
-    RoleType::Seer => SeerActor::resolve_action(village, action, guarded)
-    RoleType::Bodyguard => BodyguardActor::resolve_action(village, action, guarded)
-    RoleType::Wolf => WolfActor::resolve_action(village, action, guarded)
-    RoleType::Madman => MadmanActor::resolve_action(village, action, guarded)
-    RoleType::Lover => LoverActor::resolve_action(village, action, guarded)
-    RoleType::Bitch => BitchActor::resolve_action(village, action, guarded)
-    RoleType::Medium => MediumActor::resolve_action(village, action, guarded)
-    RoleType::Hamster => HamsterActor::resolve_action(village, action, guarded)
-  }
-}
-
-fn role_on_death(role_type: RoleType, village: Village, day_logs: Array[Log], self_id: CreatureId, dead_id: CreatureId) -> RoleEffectResult {
-  match role_type {
-    RoleType::Villager => VillagerActor::on_death(village, day_logs, self_id, dead_id)
-    RoleType::Seer => SeerActor::on_death(village, day_logs, self_id, dead_id)
-    RoleType::Bodyguard => BodyguardActor::on_death(village, day_logs, self_id, dead_id)
-    RoleType::Wolf => WolfActor::on_death(village, day_logs, self_id, dead_id)
-    RoleType::Madman => MadmanActor::on_death(village, day_logs, self_id, dead_id)
-    RoleType::Lover => LoverActor::on_death(village, day_logs, self_id, dead_id)
-    RoleType::Bitch => BitchActor::on_death(village, day_logs, self_id, dead_id)
-    RoleType::Medium => MediumActor::on_death(village, day_logs, self_id, dead_id)
-    RoleType::Hamster => HamsterActor::on_death(village, day_logs, self_id, dead_id)
-  }
-}
-
-fn role_on_executed(role_type: RoleType, village: Village, self_id: CreatureId, executed_id: CreatureId) -> RoleEffectResult {
-  match role_type {
-    RoleType::Villager => VillagerActor::on_executed(village, self_id, executed_id)
-    RoleType::Seer => SeerActor::on_executed(village, self_id, executed_id)
-    RoleType::Bodyguard => BodyguardActor::on_executed(village, self_id, executed_id)
-    RoleType::Wolf => WolfActor::on_executed(village, self_id, executed_id)
-    RoleType::Madman => MadmanActor::on_executed(village, self_id, executed_id)
-    RoleType::Lover => LoverActor::on_executed(village, self_id, executed_id)
-    RoleType::Bitch => BitchActor::on_executed(village, self_id, executed_id)
-    RoleType::Medium => MediumActor::on_executed(village, self_id, executed_id)
-    RoleType::Hamster => HamsterActor::on_executed(village, self_id, executed_id)
-  }
-}
-
-fn role_override_winner(role_type: RoleType, village: Village, self_id: CreatureId, base: Team?) -> Team? {
-  match role_type {
-    RoleType::Villager => VillagerActor::override_winner(village, self_id, base)
-    RoleType::Seer => SeerActor::override_winner(village, self_id, base)
-    RoleType::Bodyguard => BodyguardActor::override_winner(village, self_id, base)
-    RoleType::Wolf => WolfActor::override_winner(village, self_id, base)
-    RoleType::Madman => MadmanActor::override_winner(village, self_id, base)
-    RoleType::Lover => LoverActor::override_winner(village, self_id, base)
-    RoleType::Bitch => BitchActor::override_winner(village, self_id, base)
-    RoleType::Medium => MediumActor::override_winner(village, self_id, base)
-    RoleType::Hamster => HamsterActor::override_winner(village, self_id, base)
-  }
+  role_actor_from_type(role_type).team()
 }

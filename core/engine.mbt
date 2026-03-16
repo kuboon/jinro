@@ -17,6 +17,13 @@ fn role_of(village: Village, id: CreatureId) -> RoleType? {
   None
 }
 
+fn role_actor_of(village: Village, id: CreatureId) -> RoleActorEnum? {
+  match role_of(village, id) {
+    None => None
+    Some(role_type) => Some(role_actor_from_type(role_type))
+  }
+}
+
 fn is_dead_by_logs(village: Village, id: CreatureId) -> Bool {
   for d in village.days {
     for l in d.logs {
@@ -170,10 +177,9 @@ pub fn get_available_actions(village: Village, creature_id: CreatureId) -> Array
     return []
   }
   let day_number = current_day(village)
-  let role_type_opt = role_of(village, creature_id)
-  match role_type_opt {
+  match role_actor_of(village, creature_id) {
     None => []
-    Some(role_type) => role_available_actions(role_type, village, creature_id, day_number)
+    Some(actor) => actor.available_actions(village, creature_id, day_number)
   }
 }
 
@@ -215,7 +221,8 @@ fn winner(village: Village) -> Team? {
   match base {
     Some(_) => {
       for c in village.creatures {
-        match role_override_winner(c.role.role_type, village, c.id, base) {
+        let actor = role_actor_from_type(c.role.role_type)
+        match actor.override_winner(village, c.id, base) {
           Some(team) => return Some(team)
           None => ()
         }
@@ -356,8 +363,8 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
   let guarded = guarded_target(actions)
 
   for a in actions {
-    match role_of(village, a.actor) {
-      Some(role_type) => apply_role_effect(role_resolve_action(role_type, village, a, guarded))
+    match role_actor_of(village, a.actor) {
+      Some(actor) => apply_role_effect(actor.resolve_action(village, a, guarded))
       None => ()
     }
   }
@@ -378,7 +385,8 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
       Some(exe) => {
         for c in village.creatures {
           if is_alive(village, c.id) && not(contains_id(death_ids, c.id)) {
-            apply_role_effect(role_on_executed(c.role.role_type, village, c.id, exe))
+            let actor = role_actor_from_type(c.role.role_type)
+            apply_role_effect(actor.on_executed(village, c.id, exe))
           }
         }
       }
@@ -391,7 +399,8 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
     let dead = death_ids[i]
     for c in village.creatures {
       if is_alive(village, c.id) && not(contains_id(death_ids, c.id)) {
-        apply_role_effect(role_on_death(c.role.role_type, village, logs, c.id, dead))
+        let actor = role_actor_from_type(c.role.role_type)
+        apply_role_effect(actor.on_death(village, logs, c.id, dead))
       }
     }
     i = i + 1
