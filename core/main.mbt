@@ -1,8 +1,8 @@
 // WASM entry point (non-JSON for now).
 // JSON serialization will be added later.
 
-pub fn wasm_create_village(creatures: Array[Creature], rule: Rule) -> (Village, Today) {
-  create_village(creatures, rule)
+pub fn wasm_create_village(roles: Array[Role], rule: Rule) -> (Village, Today) {
+  create_village(roles, rule)
 }
 
 pub fn wasm_process_day(village: Village, actions: Array[Action]) -> (Village, DayResult) {

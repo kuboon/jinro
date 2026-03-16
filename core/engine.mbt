@@ -140,7 +140,15 @@ fn alive_non_wolf_ids(village: Village) -> Array[CreatureId] {
   ids
 }
 
-fn cause_of_death(village: Village, id: CreatureId) -> String? {
+fn cause_of_death_from_action(action_type: ActionType) -> CauseOfDeath {
+  if action_is(action_type, ActionType::Vote) {
+    CauseOfDeath::Executed
+  } else {
+    CauseOfDeath::FoundDead
+  }
+}
+
+fn cause_of_death(village: Village, id: CreatureId) -> CauseOfDeath? {
   for d in village.days {
     for l in d.logs {
       // In-game cause should not reveal hidden reasons.
@@ -149,7 +157,7 @@ fn cause_of_death(village: Village, id: CreatureId) -> String? {
           match (l.target, l.result) {
             (Some(t), Some(r)) => {
               if t == id && r == "dead" {
-                return Some(action_type_to_string(l.action_type))
+                return Some(cause_of_death_from_action(l.action_type))
               }
             }
             _ => ()
@@ -354,7 +362,14 @@ fn build_today(village: Village) -> Today {
   }
 }
 
-pub fn create_village(creatures: Array[Creature], rule: Rule) -> (Village, Today) {
+pub fn create_village(roles: Array[Role], rule: Rule) -> (Village, Today) {
+  let mut creatures: Array[Creature] = []
+  let mut idx = 0
+  for role in roles {
+    let id: CreatureId = "c" + (idx + 1).to_string()
+    creatures = [..creatures, { id, role }]
+    idx = idx + 1
+  }
   let village: Village = { rule, creatures, days: [] }
   (village, build_today(village))
 }

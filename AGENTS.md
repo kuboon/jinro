@@ -92,7 +92,7 @@ type Log {
 }
 
 // 村作成。 CreatureId 発行 (days: [])、 0日目の Today 返却
-fn create_village(roles: RoleType[], rule: Rule) -> (Village, Today)
+fn create_village(roles: Array[Role], rule: Rule) -> (Village, Today)
 
 // 翌日の情報を取得 (生存者一覧、実行可能なアクション、閲覧可能なログ)
 type CreatureStatus {
@@ -114,8 +114,12 @@ fn process_day(village: Village, actions: Array[Action]) -> (Village, Array[Log]
 
 ### Example Flow
 ```psudo
-rule = {}
-roles = [Villager, Wolf, Seer]
+rule = { vote: "public" }
+roles = [
+  { role_type: Villager, metadata: {} },
+  { role_type: Wolf, metadata: {} },
+  { role_type: Seer, metadata: {} }
+]
 village, today = create_village(roles, rule)
 while(today.winner is null){
   actions = []

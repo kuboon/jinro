@@ -1,5 +1,10 @@
 pub type CreatureId = String
-pub type Team = String
+pub(all) enum Team {
+  Villagers
+  Wolves
+  Lovers
+  Hamsters
+}
 pub type VoteType = String
 pub type Result = String
 
@@ -14,6 +19,11 @@ pub(all) enum ActionType {
   LoversSuicide
   Medium
   HamsterCurse
+}
+
+pub(all) enum CauseOfDeath {
+  Executed
+  FoundDead
 }
 
 pub(all) enum RoleType {
@@ -85,7 +95,7 @@ pub(all) struct CreatureStatus {
   team: Team
   status: Result
   available_actions: Array[AvailableAction]
-  cause_of_death: String?
+  cause_of_death: CauseOfDeath?
 }
 
 pub(all) struct DeathRecord {
@@ -154,7 +164,7 @@ pub fn make_creature_status(
   team: Team,
   status: Result,
   available_actions: Array[AvailableAction],
-  cause_of_death: String?,
+  cause_of_death: CauseOfDeath?,
 ) -> CreatureStatus {
   { id, role_type, team, status, available_actions, cause_of_death, }
 }
