@@ -1,9 +1,32 @@
 pub type CreatureId = String
-pub type RoleType = String
-pub type ActionType = String
 pub type Team = String
 pub type VoteType = String
 pub type Result = String
+
+pub(all) enum ActionType {
+  Vote
+  Bite
+  Unknown
+  Guard
+  Divine
+  Love
+  FakeLove
+  LoversSuicide
+  Medium
+  HamsterCurse
+}
+
+pub(all) enum RoleType {
+  Villager
+  Seer
+  Bodyguard
+  Wolf
+  Madman
+  Lover
+  Bitch
+  Medium
+  Hamster
+}
 
 pub(all) enum Receivers {
   All
@@ -72,9 +95,8 @@ pub(all) struct DeathRecord {
 
 pub(all) struct Today {
   day_number: Int
-  alive_creatures: Array[CreatureStatus]
-  all_creatures: Array[CreatureStatus]
-  game_result: Team?
+  winner: Team?
+  creature_statuses: Array[CreatureStatus]
 }
 
 pub(all) struct DayResult {
@@ -143,11 +165,10 @@ pub fn make_death_record(creature_id: CreatureId, reason: String) -> DeathRecord
 
 pub fn make_today(
   day_number: Int,
-  alive_creatures: Array[CreatureStatus],
-  all_creatures: Array[CreatureStatus],
-  game_result: Team?,
+  winner: Team?,
+  creature_statuses: Array[CreatureStatus],
 ) -> Today {
-  { day_number, alive_creatures, all_creatures, game_result, }
+  { day_number, winner, creature_statuses, }
 }
 
 pub fn make_day_result(

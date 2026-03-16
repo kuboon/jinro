@@ -1,47 +1,72 @@
 // Jinro core engine (stateless)
 
-// RoleType constants
-const ROLE_VILLAGER: RoleType = "villager"
-const ROLE_SEER: RoleType = "seer"
-const ROLE_BODYGUARD: RoleType = "bodyguard"
-const ROLE_WOLF: RoleType = "wolf"
-const ROLE_LOVER: RoleType = "lover"
-const ROLE_BITCH: RoleType = "bitch"
-const ROLE_MEDIUM: RoleType = "medium"
-const ROLE_HAMSTER: RoleType = "hamster"
-
-// ActionType constants
-const ACTION_VOTE: ActionType = "vote"
-const ACTION_BITE: ActionType = "bite"
-const ACTION_UNKNOWN: ActionType = "unknown"
-const ACTION_GUARD: ActionType = "guard"
-const ACTION_DIVINE: ActionType = "divine"
-const ACTION_LOVE: ActionType = "love"
-const ACTION_FAKE_LOVE: ActionType = "fake_love"
-const ACTION_LOVERS_SUICIDE: ActionType = "lovers_suicide"
-const ACTION_MEDIUM: ActionType = "medium"
-const ACTION_HAMSTER_CURSE: ActionType = "hamster_curse"
-
 fn current_day(village: Village) -> Int {
   village.days.length()
 }
 
+fn action_type_to_string(action_type: ActionType) -> String {
+  match action_type {
+    ActionType::Vote => "vote"
+    ActionType::Bite => "bite"
+    ActionType::Unknown => "unknown"
+    ActionType::Guard => "guard"
+    ActionType::Divine => "divine"
+    ActionType::Love => "love"
+    ActionType::FakeLove => "fake_love"
+    ActionType::LoversSuicide => "lovers_suicide"
+    ActionType::Medium => "medium"
+    ActionType::HamsterCurse => "hamster_curse"
+  }
+}
+
+fn action_is(action_type: ActionType, expected: ActionType) -> Bool {
+  match (action_type, expected) {
+    (ActionType::Vote, ActionType::Vote) => true
+    (ActionType::Bite, ActionType::Bite) => true
+    (ActionType::Unknown, ActionType::Unknown) => true
+    (ActionType::Guard, ActionType::Guard) => true
+    (ActionType::Divine, ActionType::Divine) => true
+    (ActionType::Love, ActionType::Love) => true
+    (ActionType::FakeLove, ActionType::FakeLove) => true
+    (ActionType::LoversSuicide, ActionType::LoversSuicide) => true
+    (ActionType::Medium, ActionType::Medium) => true
+    (ActionType::HamsterCurse, ActionType::HamsterCurse) => true
+    _ => false
+  }
+}
+
+fn role_type_to_string(role_type: RoleType) -> String {
+  match role_type {
+    RoleType::Villager => "villager"
+    RoleType::Seer => "seer"
+    RoleType::Bodyguard => "bodyguard"
+    RoleType::Wolf => "wolf"
+    RoleType::Madman => "madman"
+    RoleType::Lover => "lover"
+    RoleType::Bitch => "bitch"
+    RoleType::Medium => "medium"
+    RoleType::Hamster => "hamster"
+  }
+}
+
 fn team_of(role_type: RoleType) -> Team {
-  if role_type == ROLE_WOLF {
-    "wolves"
-  } else if role_type == ROLE_LOVER {
-    "lovers"
-  } else {
-    "villagers"
+  match role_type {
+    RoleType::Wolf => "wolves"
+    RoleType::Madman => "wolves"
+    RoleType::Lover => "lovers"
+    _ => "villagers"
   }
 }
 
 fn is_hamster_alive(village: Village) -> Bool {
   for c in village.creatures {
-    if c.role.role_type == ROLE_HAMSTER {
-      if is_alive(village, c.id) {
-        return true
+    match c.role.role_type {
+      RoleType::Hamster => {
+        if is_alive(village, c.id) {
+          return true
+        }
       }
+      _ => ()
     }
   }
   false
@@ -124,7 +149,7 @@ fn cause_of_death(village: Village, id: CreatureId) -> String? {
           match (l.target, l.result) {
             (Some(t), Some(r)) => {
               if t == id && r == "dead" {
-                return Some(l.action_type)
+                return Some(action_type_to_string(l.action_type))
               }
             }
             _ => ()
@@ -139,7 +164,7 @@ fn cause_of_death(village: Village, id: CreatureId) -> String? {
 
 fn partner_in_logs(logs: Array[Log], id: CreatureId) -> CreatureId? {
   for l in logs {
-    if l.action_type == ACTION_LOVE && l.result == Some("partnered") {
+    if action_is(l.action_type, ActionType::Love) && l.result == Some("partnered") {
       match (l.actor, l.target) {
         (Some(a), Some(t)) => {
           // Partnership is only formed if this love log is shared to both sides.
@@ -193,25 +218,17 @@ fn contains_id(ids: Array[CreatureId], id: CreatureId) -> Bool {
 }
 
 fn can_do_action(role_type: RoleType, action_type: ActionType, day_number: Int) -> Bool {
-  // day_number is 0 at setup (no actions)
-  if role_type == ROLE_VILLAGER {
-    action_type == ACTION_VOTE && day_number >= 2
-  } else if role_type == ROLE_SEER {
-    (action_type == ACTION_DIVINE && day_number == 1) || (action_type == ACTION_VOTE && day_number >= 2)
-  } else if role_type == ROLE_BODYGUARD {
-    (action_type == ACTION_GUARD && day_number >= 1) || (action_type == ACTION_VOTE && day_number >= 2)
-  } else if role_type == ROLE_WOLF {
-    (action_type == ACTION_BITE && day_number >= 1) || (action_type == ACTION_VOTE && day_number >= 2)
-  } else if role_type == ROLE_LOVER {
-    (action_type == ACTION_LOVE && day_number == 1) || (action_type == ACTION_VOTE && day_number >= 2)
-  } else if role_type == ROLE_BITCH {
-    ((action_type == ACTION_LOVE || action_type == ACTION_FAKE_LOVE) && day_number == 1) || (action_type == ACTION_VOTE && day_number >= 2)
-  } else if role_type == ROLE_MEDIUM {
-    action_type == ACTION_VOTE && day_number >= 2
-  } else if role_type == ROLE_HAMSTER {
-    action_type == ACTION_VOTE && day_number >= 2
-  } else {
-    false
+  // day_number is 0 at setup (seer can divine)
+  match role_type {
+    RoleType::Villager => action_is(action_type, ActionType::Vote) && day_number >= 1
+    RoleType::Seer => action_is(action_type, ActionType::Divine) || (action_is(action_type, ActionType::Vote) && day_number >= 1)
+    RoleType::Bodyguard => (action_is(action_type, ActionType::Guard) && day_number >= 1) || (action_is(action_type, ActionType::Vote) && day_number >= 1)
+    RoleType::Wolf => (action_is(action_type, ActionType::Bite) && day_number >= 1) || (action_is(action_type, ActionType::Vote) && day_number >= 1)
+    RoleType::Madman => action_is(action_type, ActionType::Vote) && day_number >= 1
+    RoleType::Lover => (action_is(action_type, ActionType::Love) && day_number == 1) || (action_is(action_type, ActionType::Vote) && day_number >= 1)
+    RoleType::Bitch => ((action_is(action_type, ActionType::Love) || action_is(action_type, ActionType::FakeLove)) && day_number == 1) || (action_is(action_type, ActionType::Vote) && day_number >= 1)
+    RoleType::Medium => action_is(action_type, ActionType::Vote) && day_number >= 1
+    RoleType::Hamster => action_is(action_type, ActionType::Vote) && day_number >= 1
   }
 }
 
@@ -226,28 +243,28 @@ pub fn get_available_actions(village: Village, creature_id: CreatureId) -> Array
     Some(role_type) => {
       let mut out: Array[AvailableAction] = []
       // vote
-      if can_do_action(role_type, ACTION_VOTE, day_number) {
-        out = [..out, { action_type: ACTION_VOTE, targets: alive_ids_except(village, creature_id) }]
+      if can_do_action(role_type, ActionType::Vote, day_number) {
+        out = [..out, { action_type: ActionType::Vote, targets: alive_ids_except(village, creature_id) }]
       }
       // divine
-      if can_do_action(role_type, ACTION_DIVINE, day_number) {
-        out = [..out, { action_type: ACTION_DIVINE, targets: alive_ids_except(village, creature_id) }]
+      if can_do_action(role_type, ActionType::Divine, day_number) {
+        out = [..out, { action_type: ActionType::Divine, targets: alive_ids_except(village, creature_id) }]
       }
       // guard
-      if can_do_action(role_type, ACTION_GUARD, day_number) {
-        out = [..out, { action_type: ACTION_GUARD, targets: alive_ids(village) }]
+      if can_do_action(role_type, ActionType::Guard, day_number) {
+        out = [..out, { action_type: ActionType::Guard, targets: alive_ids(village) }]
       }
       // bite
-      if can_do_action(role_type, ACTION_BITE, day_number) {
-        out = [..out, { action_type: ACTION_BITE, targets: alive_non_wolf_ids(village) }]
+      if can_do_action(role_type, ActionType::Bite, day_number) {
+        out = [..out, { action_type: ActionType::Bite, targets: alive_non_wolf_ids(village) }]
       }
       // love
-      if can_do_action(role_type, ACTION_LOVE, day_number) {
-        out = [..out, { action_type: ACTION_LOVE, targets: alive_ids_except(village, creature_id) }]
+      if can_do_action(role_type, ActionType::Love, day_number) {
+        out = [..out, { action_type: ActionType::Love, targets: alive_ids_except(village, creature_id) }]
       }
       // fake love (bitch only)
-      if can_do_action(role_type, ACTION_FAKE_LOVE, day_number) {
-        out = [..out, { action_type: ACTION_FAKE_LOVE, targets: alive_ids_except(village, creature_id) }]
+      if can_do_action(role_type, ActionType::FakeLove, day_number) {
+        out = [..out, { action_type: ActionType::FakeLove, targets: alive_ids_except(village, creature_id) }]
       }
       out
     }
@@ -302,7 +319,7 @@ fn winner(village: Village) -> Team? {
 }
 
 fn build_status(village: Village, id: CreatureId) -> CreatureStatus {
-  let mut role_type: RoleType = ROLE_VILLAGER
+  let mut role_type: RoleType = RoleType::Villager
   for c in village.creatures {
     if c.id == id {
       role_type = c.role.role_type
@@ -325,20 +342,15 @@ fn build_status(village: Village, id: CreatureId) -> CreatureStatus {
 
 fn build_today(village: Village) -> Today {
   let day_number = current_day(village)
-  let mut alive_creatures: Array[CreatureStatus] = []
-  let mut all_creatures: Array[CreatureStatus] = []
+  let mut creature_statuses: Array[CreatureStatus] = []
   for c in village.creatures {
     let st = build_status(village, c.id)
-    all_creatures = [..all_creatures, st]
-    if st.status == "alive" {
-      alive_creatures = [..alive_creatures, st]
-    }
+    creature_statuses = [..creature_statuses, st]
   }
   {
     day_number,
-    alive_creatures,
-    all_creatures,
-    game_result: winner(village),
+    winner: winner(village),
+    creature_statuses,
   }
 }
 
@@ -350,7 +362,7 @@ pub fn create_village(creatures: Array[Creature], rule: Rule) -> (Village, Today
 fn compute_vote_death(actions: Array[Action]) -> CreatureId? {
   let votes: Map[CreatureId, Int] = Map::new()
   for a in actions {
-    if a.action_type == ACTION_VOTE {
+    if action_is(a.action_type, ActionType::Vote) {
       match a.target {
         Some(t) => {
           let cur = votes.get(t).unwrap_or(0)
@@ -386,7 +398,7 @@ fn compute_vote_death(actions: Array[Action]) -> CreatureId? {
 
 fn guarded_target(actions: Array[Action]) -> CreatureId? {
   for a in actions {
-    if a.action_type == ACTION_GUARD {
+    if action_is(a.action_type, ActionType::Guard) {
       return a.target
     }
   }
@@ -394,8 +406,8 @@ fn guarded_target(actions: Array[Action]) -> CreatureId? {
 }
 
 fn public_death_action(true_cause: ActionType) -> ActionType {
-  if true_cause == ACTION_BITE || true_cause == ACTION_LOVERS_SUICIDE || true_cause == ACTION_HAMSTER_CURSE {
-    ACTION_UNKNOWN
+  if action_is(true_cause, ActionType::Bite) || action_is(true_cause, ActionType::LoversSuicide) || action_is(true_cause, ActionType::HamsterCurse) {
+    ActionType::Unknown
   } else {
     true_cause
   }
@@ -421,26 +433,30 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
 
   // divine
   for a in actions {
-    if a.action_type == ACTION_DIVINE {
+    if action_is(a.action_type, ActionType::Divine) {
       let rt = role_of(village, a.actor)
       match rt {
         Some(seer_role) => {
-          if seer_role == ROLE_SEER {
-            match a.target {
-              Some(t) => {
-                let target_role = role_of(village, t)
-                match target_role {
-                  Some(tr) => {
-                    logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ACTION_DIVINE, actor: Some(a.actor), target: Some(t), result: Some(tr) }]
-                    if tr == ROLE_HAMSTER {
-                      add_death(t, ACTION_HAMSTER_CURSE)
+          match seer_role {
+            RoleType::Seer => {
+              match a.target {
+                Some(t) => {
+                  let target_role = role_of(village, t)
+                  match target_role {
+                    Some(tr) => {
+                      logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ActionType::Divine, actor: Some(a.actor), target: Some(t), result: Some(role_type_to_string(tr)) }]
+                      match tr {
+                        RoleType::Hamster => add_death(t, ActionType::HamsterCurse)
+                        _ => ()
+                      }
                     }
+                    None => ()
                   }
-                  None => ()
                 }
+                None => ()
               }
-              None => ()
             }
+            _ => ()
           }
         }
         None => ()
@@ -450,16 +466,16 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
 
   // guard log (private)
   for a in actions {
-    if a.action_type == ACTION_GUARD {
-      logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ACTION_GUARD, actor: Some(a.actor), target: a.target, result: Some("guarded") }]
+    if action_is(a.action_type, ActionType::Guard) {
+      logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ActionType::Guard, actor: Some(a.actor), target: a.target, result: Some("guarded") }]
     }
   }
 
   // love log (private to both)
   for a in actions {
-    if a.action_type == ACTION_LOVE {
+    if action_is(a.action_type, ActionType::Love) {
       match a.target {
-        Some(t) => logs = [..logs, { receivers: Receivers::Only([a.actor, t]), action_type: ACTION_LOVE, actor: Some(a.actor), target: Some(t), result: Some("partnered") }]
+        Some(t) => logs = [..logs, { receivers: Receivers::Only([a.actor, t]), action_type: ActionType::Love, actor: Some(a.actor), target: Some(t), result: Some("partnered") }]
         None => ()
       }
     }
@@ -467,15 +483,18 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
 
   // fake love: target receives a love log but no partnership is formed
   for a in actions {
-    if a.action_type == ACTION_FAKE_LOVE {
+    if action_is(a.action_type, ActionType::FakeLove) {
       let rt = role_of(village, a.actor)
       match rt {
         Some(r) => {
-          if r == ROLE_BITCH {
-            match a.target {
-              Some(t) => logs = [..logs, { receivers: Receivers::Only([t]), action_type: ACTION_LOVE, actor: Some(a.actor), target: Some(t), result: Some("partnered") }]
-              None => ()
+          match r {
+            RoleType::Bitch => {
+              match a.target {
+                Some(t) => logs = [..logs, { receivers: Receivers::Only([t]), action_type: ActionType::Love, actor: Some(a.actor), target: Some(t), result: Some("partnered") }]
+                None => ()
+              }
             }
+            _ => ()
           }
         }
         None => ()
@@ -485,15 +504,15 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
 
   // bite (death handled here)
   for a in actions {
-    if a.action_type == ACTION_BITE {
+    if action_is(a.action_type, ActionType::Bite) {
       match a.target {
         Some(t) => {
           if guarded == Some(t) {
-            logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ACTION_BITE, actor: Some(a.actor), target: Some(t), result: Some("guarded") }]
+            logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ActionType::Bite, actor: Some(a.actor), target: Some(t), result: Some("guarded") }]
           } else {
             // Only the wolf gets the action result.
-            logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ACTION_BITE, actor: Some(a.actor), target: Some(t), result: Some("dead") }]
-            add_death(t, ACTION_BITE)
+            logs = [..logs, { receivers: Receivers::Only([a.actor]), action_type: ActionType::Bite, actor: Some(a.actor), target: Some(t), result: Some("dead") }]
+            add_death(t, ActionType::Bite)
           }
         }
         None => ()
@@ -501,17 +520,17 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
     }
   }
 
-  // vote (day >= 2)
-  if next_day_number >= 2 {
+  // vote (day >= 1)
+  if next_day_number >= 1 {
     let voted = compute_vote_death(actions)
     match voted {
-      Some(t) => add_death(t, ACTION_VOTE)
+      Some(t) => add_death(t, ActionType::Vote)
       None => ()
     }
   }
 
   // medium: reveal whether executed by vote was a wolf
-  if next_day_number >= 2 {
+  if next_day_number >= 1 {
     let voted = compute_vote_death(actions)
     match voted {
       Some(exe) => {
@@ -526,11 +545,14 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
           None => ()
         }
         for c in village.creatures {
-          if c.role.role_type == ROLE_MEDIUM {
-            if is_alive(village, c.id) && not(contains_id(death_ids, c.id)) {
-              let res = if is_wolf { "wolf" } else { "not_wolf" }
-              logs = [..logs, { receivers: Receivers::Only([c.id]), action_type: ACTION_MEDIUM, actor: Some(c.id), target: Some(exe), result: Some(res) }]
+          match c.role.role_type {
+            RoleType::Medium => {
+              if is_alive(village, c.id) && not(contains_id(death_ids, c.id)) {
+                let res = if is_wolf { "wolf" } else { "not_wolf" }
+                logs = [..logs, { receivers: Receivers::Only([c.id]), action_type: ActionType::Medium, actor: Some(c.id), target: Some(exe), result: Some(res) }]
+              }
             }
+            _ => ()
           }
         }
       }
@@ -545,7 +567,7 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
     match partner {
       Some(p) => {
         if is_alive(village, p) && not(contains_id(death_ids, p)) {
-          add_death(p, ACTION_LOVERS_SUICIDE)
+          add_death(p, ActionType::LoversSuicide)
         }
       }
       None => ()
@@ -564,7 +586,7 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
     logs = [..logs, { receivers: Receivers::All, action_type: pub_action, actor: None, target: Some(id), result: Some("dead") }]
     // after game disclosure
     logs = [..logs, { receivers: Receivers::Afterall, action_type: cause, actor: None, target: Some(id), result: Some("dead") }]
-    deaths = [..deaths, { creature_id: id, reason: cause }]
+    deaths = [..deaths, { creature_id: id, reason: action_type_to_string(cause) }]
     idx = idx + 1
   }
 

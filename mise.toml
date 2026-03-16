@@ -1,0 +1,8 @@
+[tools]
+deno = "latest"
+node = "latest"
+rust = "latest"
+
+[tasks.install-moonbit]
+description = "Install MoonBit compiler"
+run = "curl -fsSL https://raw.githubusercontent.com/moonbitlang/moonbit-compiler/refs/heads/main/install.ts | node"
