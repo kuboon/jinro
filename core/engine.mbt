@@ -49,12 +49,22 @@ fn role_type_to_string(role_type: RoleType) -> String {
   }
 }
 
+fn team_is(team: Team, expected: Team) -> Bool {
+  match (team, expected) {
+    (Team::Villagers, Team::Villagers) => true
+    (Team::Wolves, Team::Wolves) => true
+    (Team::Lovers, Team::Lovers) => true
+    (Team::Hamsters, Team::Hamsters) => true
+    _ => false
+  }
+}
+
 fn team_of(role_type: RoleType) -> Team {
   match role_type {
-    RoleType::Wolf => "wolves"
-    RoleType::Madman => "wolves"
-    RoleType::Lover => "lovers"
-    _ => "villagers"
+    RoleType::Wolf => Team::Wolves
+    RoleType::Madman => Team::Wolves
+    RoleType::Lover => Team::Lovers
+    _ => Team::Villagers
   }
 }
 
@@ -132,7 +142,7 @@ fn alive_non_wolf_ids(village: Village) -> Array[CreatureId] {
   for c in village.creatures {
     if is_alive(village, c.id) {
       let t = team_of(c.role.role_type)
-      if t != "wolves" {
+      if not(team_is(t, Team::Wolves)) {
         ids = [..ids, c.id]
       }
     }
@@ -290,7 +300,7 @@ fn winner(village: Village) -> Team? {
     let pa = partner_of(village, [], a)
     let pb = partner_of(village, [], b)
     if pa == Some(b) && pb == Some(a) {
-      base = Some("lovers")
+      base = Some(Team::Lovers)
     }
   }
 
@@ -300,17 +310,17 @@ fn winner(village: Village) -> Team? {
   for c in village.creatures {
     if is_alive(village, c.id) {
       match team_of(c.role.role_type) {
-        "wolves" => wolves = wolves + 1
-        "lovers" => lovers = lovers + 1
+        Team::Wolves => wolves = wolves + 1
+        Team::Lovers => lovers = lovers + 1
         _ => villagers = villagers + 1
       }
     }
   }
   if base is None {
     if wolves == 0 {
-      base = Some("villagers")
+      base = Some(Team::Villagers)
     } else if wolves >= villagers {
-      base = Some("wolves")
+      base = Some(Team::Wolves)
     }
   }
 
@@ -318,7 +328,7 @@ fn winner(village: Village) -> Team? {
   match base {
     Some(_) => {
       if is_hamster_alive(village) {
-        return Some("hamster")
+        return Some(Team::Hamsters)
       }
       base
     }
@@ -553,7 +563,7 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
         let mut is_wolf = false
         match exe_role {
           Some(rt) => {
-            if team_of(rt) == "wolves" {
+            if team_is(team_of(rt), Team::Wolves) {
               is_wolf = true
             }
           }

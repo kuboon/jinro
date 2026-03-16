@@ -71,14 +71,17 @@ test {
   let (v0, t0) = @jinro.create_village(roles, ({ vote: "public" } : @jinro.Rule))
   let m = id_at(v0, 0)
 
-  let mut m_team: String? = None
+  let mut wolves_team = false
   for s in t0.creature_statuses {
     if s.id == m {
-      m_team = Some(s.team)
+      match s.team {
+        @jinro.Team::Wolves => wolves_team = true
+        _ => ()
+      }
     }
   }
 
-  if not(m_team == Some("wolves")) { panic() }
+  if not(wolves_team) { panic() }
 }
 
 test {
@@ -242,7 +245,10 @@ test {
     { actor: v, action_type: @jinro.ActionType::Vote, target: Some(w) },
     { actor: w, action_type: @jinro.ActionType::Vote, target: Some(v) },
   ] : Array[@jinro.Action]))
-  if not(r2.today.winner == Some("hamster")) { panic() }
+  match r2.today.winner {
+    Some(@jinro.Team::Hamsters) => ()
+    _ => panic()
+  }
 }
 
 test {
@@ -322,7 +328,10 @@ test {
     { actor: b, action_type: @jinro.ActionType::Vote, target: Some(w) },
     { actor: p, action_type: @jinro.ActionType::Vote, target: Some(w) },
   ] : Array[@jinro.Action]))
-  if not(r2.today.winner == Some("lovers")) { panic() }
+  match r2.today.winner {
+    Some(@jinro.Team::Lovers) => ()
+    _ => panic()
+  }
 }
 
 test {
@@ -376,5 +385,8 @@ test {
     { actor: p, action_type: @jinro.ActionType::Vote, target: Some(w) },
   ] : Array[@jinro.Action]))
 
-  if not(r2.today.winner == Some("lovers")) { panic() }
+  match r2.today.winner {
+    Some(@jinro.Team::Lovers) => ()
+    _ => panic()
+  }
 }
