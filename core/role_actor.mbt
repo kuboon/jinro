@@ -81,7 +81,7 @@ impl RoleActor for SeerActor with resolve_action(_self, village, action, _) {
     Some(target) => {
       match role_of(village, target) {
         Some(target_role) => {
-          let divine_result = if team_of(target_role) == Team::Wolves {
+          let divine_result = if role_actor_from_type(target_role).team() == Team::Wolves {
             LogResult::Wolf
           } else {
             LogResult::NonWolf
@@ -324,7 +324,7 @@ impl RoleActor for MediumActor with available_actions(self, village, creature_id
 
 impl RoleActor for MediumActor with on_executed(_self, village, self_id, executed_id) {
   let res = match role_of(village, executed_id) {
-    Some(rt) => if role_team_of(rt) == Team::Wolves { LogResult::Wolf } else { LogResult::NonWolf }
+    Some(rt) => if role_actor_from_type(rt).team() == Team::Wolves { LogResult::Wolf } else { LogResult::NonWolf }
     None => LogResult::NonWolf
   }
   {
@@ -369,6 +369,3 @@ fn role_actor_from_type(role_type: RoleType) -> &RoleActor {
   }
 }
 
-fn role_team_of(role_type: RoleType) -> Team {
-  role_actor_from_type(role_type).team()
-}

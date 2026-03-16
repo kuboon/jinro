@@ -1,14 +1,79 @@
 // Jinro core engine (stateless)
 
-fn current_day(village: Village) -> Int {
-  village.days.length()
+///|
+pub suberror DataError {
+  DataError(String)
 }
 
-fn team_of(role_type: RoleType) -> Team {
-  role_team_of(role_type)
+///|
+priv struct CreatureState {
+  village : Village
+  creature_id : CreatureId
+  actor : &RoleActor
 }
 
-fn role_of(village: Village, id: CreatureId) -> RoleType? {
+///|
+fn CreatureState::new(
+  village : Village,
+  creature_id : CreatureId,
+) -> CreatureState {
+  let actor = match role_of(village, creature_id) {
+    None => role_actor_from_type(RoleType::Villager)
+    Some(role_type) => role_actor_from_type(role_type)
+  }
+  { village, creature_id, actor }
+}
+
+///|
+fn CreatureState::each_logs(self : Self) -> Iter[Log] {
+  let days = self.village.days.iter()
+  days.flat_map(fn(d) -> Iter[Log] { d.logs.iter() })
+}
+
+///|
+fn CreatureState::cause_of_death(self : Self) -> CauseOfDeath raise DataError {
+  for l in self.each_logs() {
+    match l.receivers {
+      Receivers::All =>
+        match (l.target, l.result) {
+          (Some(t), Some(LogResult::Dead)) =>
+            if t == self.creature_id {
+              return match l.action_type {
+                ActionType::Vote => CauseOfDeath::Executed
+                _ => CauseOfDeath::FoundDead
+              }
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  raise DataError("Cause of death not found")
+}
+
+fn CreatureState::available_actions(self : Self) -> Array[AvailableAction] {
+  let day_number = self.village.days.length()
+  if self.is_alive() {
+    self.actor.available_actions(self.village, self.creature_id, day_number)
+  } else {
+    []
+  }
+}
+priv struct VillageState {
+  village : Village
+  creature_statuses : Map[CreatureId, CreatureState]
+}
+
+///|
+fn VillageState::new(village : Village) -> VillageState {
+  let creature_statuses : Map[CreatureId, CreatureState] = Map::new()
+  for c in village.creatures {
+    creature_statuses.set(c.id, CreatureState::new(village, c.id))
+  }
+  { village, creature_statuses }
+}
+
+fn role_of(village : Village, id : CreatureId) -> RoleType? {
   for c in village.creatures {
     if c.id == id {
       return Some(c.role.role_type)
@@ -17,28 +82,17 @@ fn role_of(village: Village, id: CreatureId) -> RoleType? {
   None
 }
 
-fn role_actor_of(village: Village, id: CreatureId) -> &RoleActor? {
-  match role_of(village, id) {
-    None => None
-    Some(role_type) => Some(role_actor_from_type(role_type))
-  }
-}
-
-fn is_dead_by_logs(village: Village, id: CreatureId) -> Bool {
+///|
+fn is_dead_by_logs(village : Village, id : CreatureId) -> Bool {
   for d in village.days {
     for l in d.logs {
       // Death should be determined by the in-game visible logs.
       match l.receivers {
-        Receivers::All => {
+        Receivers::All =>
           match (l.target, l.result) {
-            (Some(t), Some(LogResult::Dead)) => {
-              if t == id {
-                return true
-              }
-            }
+            (Some(t), Some(LogResult::Dead)) => if t == id { return true }
             _ => ()
           }
-        }
         _ => ()
       }
     }
@@ -46,74 +100,55 @@ fn is_dead_by_logs(village: Village, id: CreatureId) -> Bool {
   false
 }
 
-fn is_alive(village: Village, id: CreatureId) -> Bool {
+///|
+fn CreatureState::is_alive(self : Self) -> Bool {
+  not(is_dead_by_logs(self.village, self.creature_id))
+}
+
+///|
+fn is_alive(village : Village, id : CreatureId) -> Bool {
   not(is_dead_by_logs(village, id))
 }
 
-fn alive_ids(village: Village) -> Array[CreatureId] {
-  let mut ids: Array[CreatureId] = []
+///|
+fn alive_ids(village : Village) -> Array[CreatureId] {
+  let mut result : Array[CreatureId] = []
   for c in village.creatures {
     if is_alive(village, c.id) {
-      ids = [..ids, c.id]
+      result = [..result, c.id]
     }
   }
-  ids
+  result
 }
 
-fn alive_ids_except(village: Village, me: CreatureId) -> Array[CreatureId] {
-  let mut ids: Array[CreatureId] = []
-  for id in alive_ids(village) {
-    if id != me {
-      ids = [..ids, id]
-    }
-  }
-  ids
-}
-
-fn alive_non_wolf_ids(village: Village) -> Array[CreatureId] {
-  let mut ids: Array[CreatureId] = []
+///|
+fn alive_ids_except(
+  village : Village,
+  except : CreatureId,
+) -> Array[CreatureId] {
+  let mut result : Array[CreatureId] = []
   for c in village.creatures {
-    if is_alive(village, c.id) {
-      let t = team_of(c.role.role_type)
-      if t != Team::Wolves {
-        ids = [..ids, c.id]
-      }
+    if c.id != except && is_alive(village, c.id) {
+      result = [..result, c.id]
     }
   }
-  ids
+  result
 }
 
-fn cause_of_death_from_action(action_type: ActionType) -> CauseOfDeath {
-  if action_type == ActionType::Vote {
-    CauseOfDeath::Executed
-  } else {
-    CauseOfDeath::FoundDead
-  }
-}
-
-fn cause_of_death(village: Village, id: CreatureId) -> CauseOfDeath? {
-  for d in village.days {
-    for l in d.logs {
-      // In-game cause should not reveal hidden reasons.
-      match l.receivers {
-        Receivers::All => {
-          match (l.target, l.result) {
-            (Some(t), Some(LogResult::Dead)) => {
-              if t == id {
-                return Some(cause_of_death_from_action(l.action_type))
-              }
-            }
-            _ => ()
-          }
-        }
-        _ => ()
-      }
+///|
+fn alive_non_wolf_ids(village : Village) -> Array[CreatureId] {
+  let mut result : Array[CreatureId] = []
+  for c in village.creatures {
+    if is_alive(village, c.id) &&
+      role_actor_from_type(c.role.role_type).team() != Team::Wolves {
+      result = [..result, c.id]
     }
   }
-  None
+  result
 }
 
-fn partner_in_logs(logs: Array[Log], id: CreatureId) -> CreatureId? {
+///|
+fn partner_in_logs(logs : Array[Log], id : CreatureId) -> CreatureId? {
   for l in logs {
     let partnered = match l.result {
       Some(LogResult::Partnered) => true
@@ -125,11 +160,10 @@ fn partner_in_logs(logs: Array[Log], id: CreatureId) -> CreatureId? {
           // Partnership is only formed if this love log is shared to both sides.
           // This allows fake love to show a "love" log to the target without forming a partnership.
           match l.receivers {
-            Receivers::Only(rs) => {
+            Receivers::Only(rs) =>
               if not(contains_id(rs, a) && contains_id(rs, t)) {
                 continue
               }
-            }
             _ => continue
           }
           if a == id {
@@ -146,7 +180,12 @@ fn partner_in_logs(logs: Array[Log], id: CreatureId) -> CreatureId? {
   None
 }
 
-fn partner_of(village: Village, day_logs: Array[Log], id: CreatureId) -> CreatureId? {
+///|
+fn partner_of(
+  village : Village,
+  day_logs : Array[Log],
+  id : CreatureId,
+) -> CreatureId? {
   let p = partner_in_logs(day_logs, id)
   match p {
     Some(_) => p
@@ -163,7 +202,8 @@ fn partner_of(village: Village, day_logs: Array[Log], id: CreatureId) -> Creatur
   }
 }
 
-fn contains_id(ids: Array[CreatureId], id: CreatureId) -> Bool {
+///|
+fn contains_id(ids : Array[CreatureId], id : CreatureId) -> Bool {
   for x in ids {
     if x == id {
       return true
@@ -172,19 +212,10 @@ fn contains_id(ids: Array[CreatureId], id: CreatureId) -> Bool {
   false
 }
 
-pub fn get_available_actions(village: Village, creature_id: CreatureId) -> Array[AvailableAction] {
-  if not(is_alive(village, creature_id)) {
-    return []
-  }
-  let day_number = current_day(village)
-  match role_actor_of(village, creature_id) {
-    None => []
-    Some(actor) => actor.available_actions(village, creature_id, day_number)
-  }
-}
-
-fn winner(village: Village) -> Team? {
-  let mut base: Team? = None
+///|
+fn VillageState::winner(self : Self) -> Team? {
+  let village = self.village
+  let mut base : Team? = None
 
   // Lovers win if the last two survivors are partnered.
   let alive = alive_ids(village)
@@ -202,8 +233,9 @@ fn winner(village: Village) -> Team? {
   let mut villagers = 0
   let mut lovers = 0
   for c in village.creatures {
-    if is_alive(village, c.id) {
-      match team_of(c.role.role_type) {
+    let cs = self.creature_statuses.get(c.id).unwrap()
+    if cs.is_alive() {
+      match cs.actor.team() {
         Team::Wolves => wolves = wolves + 1
         Team::Lovers => lovers = lovers + 1
         _ => villagers = villagers + 1
@@ -221,8 +253,8 @@ fn winner(village: Village) -> Team? {
   match base {
     Some(_) => {
       for c in village.creatures {
-        let actor = role_actor_from_type(c.role.role_type)
-        match actor.override_winner(village, c.id, base) {
+        let cs = self.creature_statuses.get(c.id).unwrap()
+        match cs.actor.override_winner(village, c.id, base) {
           Some(team) => return Some(team)
           None => ()
         }
@@ -233,56 +265,51 @@ fn winner(village: Village) -> Team? {
   }
 }
 
-fn build_status(village: Village, id: CreatureId) -> CreatureStatus {
-  let mut role_type: RoleType = RoleType::Villager
+///|
+fn build_today(village : Village) -> Today raise DataError {
+  let village_state = VillageState::new(village)
+  let day_number = village.days.length()
+  let mut creature_statuses : Array[CreatureStatus] = []
   for c in village.creatures {
-    if c.id == id {
-      role_type = c.role.role_type
-    }
+    let id = c.id
+    let creature_state = village_state.creature_statuses.get(id).unwrap()
+    let role_type = c.role.role_type
+    let alive = creature_state.is_alive()
+    let actions = creature_state.available_actions()
+    let cod = if alive { None } else { Some(creature_state.cause_of_death()) }
+    creature_statuses = [
+      ..creature_statuses,
+      {
+        id,
+        role_type,
+        team: creature_state.actor.team(),
+        available_actions: actions,
+        cause_of_death: cod,
+      },
+    ]
   }
-  let t = team_of(role_type)
-  let alive = is_alive(village, id)
-  let status: Result = if alive { "alive" } else { "dead" }
-  let actions = if alive { get_available_actions(village, id) } else { [] }
-  let cod = if alive { None } else { cause_of_death(village, id) }
-  {
-    id,
-    role_type,
-    team: t,
-    status,
-    available_actions: actions,
-    cause_of_death: cod,
-  }
+  { day_number, winner: village_state.winner(), creature_statuses }
 }
 
-fn build_today(village: Village) -> Today {
-  let day_number = current_day(village)
-  let mut creature_statuses: Array[CreatureStatus] = []
-  for c in village.creatures {
-    let st = build_status(village, c.id)
-    creature_statuses = [..creature_statuses, st]
-  }
-  {
-    day_number,
-    winner: winner(village),
-    creature_statuses,
-  }
-}
-
-pub fn create_village(roles: Array[Role], rule: Rule) -> (Village, Today) {
-  let mut creatures: Array[Creature] = []
+///|
+pub fn create_village(
+  roles : Array[Role],
+  rule : Rule,
+) -> (Village, Today) raise DataError {
+  let mut creatures : Array[Creature] = []
   let mut idx = 0
   for role in roles {
-    let id: CreatureId = "c" + (idx + 1).to_string()
+    let id : CreatureId = "c" + (idx + 1).to_string()
     creatures = [..creatures, { id, role }]
     idx = idx + 1
   }
-  let village: Village = { rule, creatures, days: [] }
+  let village : Village = { rule, creatures, days: [] }
   (village, build_today(village))
 }
 
-fn compute_vote_death(actions: Array[Action]) -> CreatureId? {
-  let votes: Map[CreatureId, Int] = Map::new()
+///|
+fn compute_vote_death(actions : Array[Action]) -> CreatureId? {
+  let votes : Map[CreatureId, Int] = Map::new()
   for a in actions {
     if a.action_type == ActionType::Vote {
       match a.target {
@@ -305,7 +332,7 @@ fn compute_vote_death(actions: Array[Action]) -> CreatureId? {
     return None
   }
 
-  let mut best: CreatureId? = None
+  let mut best : CreatureId? = None
   let mut tie = false
   for k, v in votes {
     if v == max {
@@ -315,10 +342,15 @@ fn compute_vote_death(actions: Array[Action]) -> CreatureId? {
       }
     }
   }
-  if tie { None } else { best }
+  if tie {
+    None
+  } else {
+    best
+  }
 }
 
-fn guarded_target(actions: Array[Action]) -> CreatureId? {
+///|
+fn guarded_target(actions : Array[Action]) -> CreatureId? {
   for a in actions {
     if a.action_type == ActionType::Guard {
       return a.target
@@ -327,30 +359,38 @@ fn guarded_target(actions: Array[Action]) -> CreatureId? {
   None
 }
 
-fn public_death_action(true_cause: ActionType) -> ActionType {
-  if true_cause == ActionType::Bite || true_cause == ActionType::LoversSuicide || true_cause == ActionType::HamsterCurse {
+///|
+fn public_death_action(true_cause : ActionType) -> ActionType {
+  if true_cause == ActionType::Bite ||
+    true_cause == ActionType::LoversSuicide ||
+    true_cause == ActionType::HamsterCurse {
     ActionType::Unknown
   } else {
     true_cause
   }
 }
 
-pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayResult) {
-  let next_day_number = current_day(village) + 1
-  let mut logs: Array[Log] = []
+///|
+pub fn process_day(
+  village : Village,
+  actions : Array[Action],
+) -> (Village, DayResult) raise DataError {
+  let village_state = VillageState::new(village)
+  let next_day_number = village.days.length() + 1
+  let mut logs : Array[Log] = []
 
   // deaths for this day (true causes)
-  let mut death_ids: Array[CreatureId] = []
-  let mut death_causes: Array[ActionType] = []
+  let mut death_ids : Array[CreatureId] = []
+  let mut death_causes : Array[ActionType] = []
 
-  fn add_death(id: CreatureId, cause: ActionType) -> Unit {
+  fn add_death(id : CreatureId, cause : ActionType) -> Unit {
     if not(contains_id(death_ids, id)) {
       death_ids = [..death_ids, id]
       death_causes = [..death_causes, cause]
     }
   }
 
-  fn apply_role_effect(effect: RoleEffectResult) -> Unit {
+  fn apply_role_effect(effect : RoleEffectResult) -> Unit {
     for log in effect.logs {
       logs = [..logs, log]
     }
@@ -363,10 +403,8 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
   let guarded = guarded_target(actions)
 
   for a in actions {
-    match role_actor_of(village, a.actor) {
-      Some(actor) => apply_role_effect(actor.resolve_action(village, a, guarded))
-      None => ()
-    }
+    let creature_state = village_state.creature_statuses.get(a.actor).unwrap()
+    apply_role_effect(creature_state.actor.resolve_action(village, a, guarded))
   }
 
   // vote (day >= 1)
@@ -382,14 +420,13 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
   if next_day_number >= 1 {
     let voted = compute_vote_death(actions)
     match voted {
-      Some(exe) => {
+      Some(exe) =>
         for c in village.creatures {
           if is_alive(village, c.id) && not(contains_id(death_ids, c.id)) {
             let actor = role_actor_from_type(c.role.role_type)
             apply_role_effect(actor.on_executed(village, c.id, exe))
           }
         }
-      }
       None => ()
     }
   }
@@ -407,25 +444,47 @@ pub fn process_day(village: Village, actions: Array[Action]) -> (Village, DayRes
   }
 
   // publish deaths (in-game vs afterall)
-  let mut deaths: Array[DeathRecord] = []
+  let mut deaths : Array[DeathRecord] = []
   let mut idx = 0
   while idx < death_ids.length() {
     let id = death_ids[idx]
     let cause = death_causes[idx]
     let pub_action = public_death_action(cause)
     // in-game visible log
-    logs = [..logs, { receivers: Receivers::All, action_type: pub_action, actor: None, target: Some(id), result: Some(LogResult::Dead) }]
+    logs = [
+      ..logs,
+      {
+        receivers: Receivers::All,
+        action_type: pub_action,
+        actor: None,
+        target: Some(id),
+        result: Some(LogResult::Dead),
+      },
+    ]
     // after game disclosure
-    logs = [..logs, { receivers: Receivers::Afterall, action_type: cause, actor: None, target: Some(id), result: Some(LogResult::Dead) }]
+    logs = [
+      ..logs,
+      {
+        receivers: Receivers::Afterall,
+        action_type: cause,
+        actor: None,
+        target: Some(id),
+        result: Some(LogResult::Dead),
+      },
+    ]
     deaths = [..deaths, { creature_id: id, reason: cause }]
     idx = idx + 1
   }
 
-  let day: Day = { day_number: next_day_number, actions, logs }
-  let days: Array[Day] = [..village.days, day]
-  let new_village: Village = { rule: village.rule, creatures: village.creatures, days }
+  let day : Day = { day_number: next_day_number, actions, logs }
+  let days : Array[Day] = [..village.days, day]
+  let new_village : Village = {
+    rule: village.rule,
+    creatures: village.creatures,
+    days,
+  }
 
   let today = build_today(new_village)
-  let result: DayResult = { today, logs: day.logs, deaths }
+  let result : DayResult = { today, logs: day.logs, deaths }
   (new_village, result)
 }

@@ -102,7 +102,6 @@ pub(all) struct CreatureStatus {
   id: CreatureId
   role_type: RoleType
   team: Team
-  status: Result
   available_actions: Array[AvailableAction]
   cause_of_death: CauseOfDeath?
 }
@@ -175,17 +174,6 @@ pub fn make_village(rule: Rule, creatures: Array[Creature], days: Array[Day]) ->
 
 pub fn make_available_action(action_type: ActionType, targets: Array[CreatureId]) -> AvailableAction {
   { action_type, targets, }
-}
-
-pub fn make_creature_status(
-  id: CreatureId,
-  role_type: RoleType,
-  team: Team,
-  status: Result,
-  available_actions: Array[AvailableAction],
-  cause_of_death: CauseOfDeath?,
-) -> CreatureStatus {
-  { id, role_type, team, status, available_actions, cause_of_death, }
 }
 
 pub fn make_death_record(creature_id: CreatureId, reason: ActionType) -> DeathRecord {

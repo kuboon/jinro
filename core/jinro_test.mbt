@@ -29,9 +29,8 @@ test {
     mk_role(@jinro.RoleType::Seer),
     mk_role(@jinro.RoleType::Villager),
   ]
-  let (v0, _t0) = @jinro.create_village(roles, ({ vote: "public" } : @jinro.Rule))
-  let s = id_at(v0, 0)
-  let acts = @jinro.get_available_actions(v0, s)
+  let (_v0, t0) = @jinro.create_village(roles, ({ vote: "public" } : @jinro.Rule))
+  let acts = t0.creature_statuses[0].available_actions
   let mut has_divine = false
   for a in acts {
     match a.action_type {
@@ -49,9 +48,8 @@ test {
     mk_role(@jinro.RoleType::Villager),
   ]
   let (v0, _t0) = @jinro.create_village(roles, ({ vote: "public" } : @jinro.Rule))
-  let (v1, _r1) = @jinro.process_day(v0, [])
-  let p1 = id_at(v1, 0)
-  let acts = @jinro.get_available_actions(v1, p1)
+  let (_v1, r1) = @jinro.process_day(v0, [])
+  let acts = r1.today.creature_statuses[0].available_actions
   let mut has_vote = false
   for a in acts {
     match a.action_type {
@@ -294,9 +292,8 @@ test {
     mk_role(@jinro.RoleType::Villager),
   ]
   let (v0, _t0) = @jinro.create_village(roles, ({ vote: "public" } : @jinro.Rule))
-  let (v1, _r1) = @jinro.process_day(v0, [])
-  let b = id_at(v1, 0)
-  let acts = @jinro.get_available_actions(v1, b)
+  let (_v1, r1) = @jinro.process_day(v0, [])
+  let acts = r1.today.creature_statuses[0].available_actions
   let mut has_love = false
   let mut has_fake = false
   for a in acts {
