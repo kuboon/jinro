@@ -17,7 +17,7 @@ fn role_of(village: Village, id: CreatureId) -> RoleType? {
   None
 }
 
-fn role_actor_of(village: Village, id: CreatureId) -> RoleActorEnum? {
+fn role_actor_of(village: Village, id: CreatureId) -> &RoleActor? {
   match role_of(village, id) {
     None => None
     Some(role_type) => Some(role_actor_from_type(role_type))
