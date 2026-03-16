@@ -4,7 +4,7 @@ pub(all) enum Team {
   Wolves
   Lovers
   Hamsters
-}
+} derive (Eq)
 pub type VoteType = String
 pub type Result = String
 
@@ -19,11 +19,20 @@ pub(all) enum ActionType {
   LoversSuicide
   Medium
   HamsterCurse
-}
+} derive(Eq)
 
 pub(all) enum CauseOfDeath {
   Executed
   FoundDead
+}
+
+pub(all) enum LogResult {
+  Dead
+  Guarded
+  Partnered
+  Wolf
+  NonWolf
+  Role(RoleType)
 }
 
 pub(all) enum RoleType {
@@ -69,7 +78,7 @@ pub(all) struct Log {
   action_type: ActionType
   actor: CreatureId?
   target: CreatureId?
-  result: String?
+  result: LogResult?
 }
 
 pub(all) struct Day {
@@ -100,7 +109,17 @@ pub(all) struct CreatureStatus {
 
 pub(all) struct DeathRecord {
   creature_id: CreatureId
-  reason: String
+  reason: ActionType
+}
+
+pub(all) struct DeathEffect {
+  creature_id: CreatureId
+  cause: ActionType
+}
+
+pub(all) struct RoleEffectResult {
+  logs: Array[Log]
+  deaths: Array[DeathEffect]
 }
 
 pub(all) struct Today {
@@ -141,7 +160,7 @@ pub fn make_log(
   action_type: ActionType,
   actor: CreatureId?,
   target: CreatureId?,
-  result: String?,
+  result: LogResult?,
 ) -> Log {
   { receivers, action_type, actor, target, result, }
 }
@@ -169,8 +188,16 @@ pub fn make_creature_status(
   { id, role_type, team, status, available_actions, cause_of_death, }
 }
 
-pub fn make_death_record(creature_id: CreatureId, reason: String) -> DeathRecord {
+pub fn make_death_record(creature_id: CreatureId, reason: ActionType) -> DeathRecord {
   { creature_id, reason, }
+}
+
+pub fn make_death_effect(creature_id: CreatureId, cause: ActionType) -> DeathEffect {
+  { creature_id, cause, }
+}
+
+pub fn make_role_effect_result(logs: Array[Log], deaths: Array[DeathEffect]) -> RoleEffectResult {
+  { logs, deaths, }
 }
 
 pub fn make_today(

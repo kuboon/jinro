@@ -104,7 +104,10 @@ test {
   let (_v2, r2) = @jinro.process_day(v1, actions)
   if not(r2.deaths.length() == 1) { panic() }
   if not(r2.deaths[0].creature_id == p2) { panic() }
-  if not(r2.deaths[0].reason == "vote") { panic() }
+  match r2.deaths[0].reason {
+    @jinro.ActionType::Vote => ()
+    _ => panic()
+  }
 
   let mut executed_ok = false
   for s in r2.today.creature_statuses {
@@ -140,8 +143,11 @@ test {
   for l in r2.logs {
     match l.action_type {
       @jinro.ActionType::Medium => {
-        if l.actor == Some(m) && l.target == Some(w) && l.result == Some("wolf") {
-          ok = true
+        if l.actor == Some(m) && l.target == Some(w) {
+          match l.result {
+            Some(@jinro.LogResult::Wolf) => ok = true
+            _ => ()
+          }
         }
       }
       _ => ()
@@ -164,7 +170,10 @@ test {
   ] : Array[@jinro.Action]))
   if not(r1.deaths.length() == 1) { panic() }
   if not(r1.deaths[0].creature_id == v) { panic() }
-  if not(r1.deaths[0].reason == "bite") { panic() }
+  match r1.deaths[0].reason {
+    @jinro.ActionType::Bite => ()
+    _ => panic()
+  }
 
   let mut found_dead_ok = false
   for s in r1.today.creature_statuses {
@@ -195,7 +204,10 @@ test {
   // death record should contain true cause
   if not(r1.deaths.length() == 1) { panic() }
   if not(r1.deaths[0].creature_id == h) { panic() }
-  if not(r1.deaths[0].reason == "hamster_curse") { panic() }
+  match r1.deaths[0].reason {
+    @jinro.ActionType::HamsterCurse => ()
+    _ => panic()
+  }
 
   // logs: in-game (All) is indistinguishable and Afterall has true cause
   let mut has_public = false
@@ -205,8 +217,11 @@ test {
       @jinro.Receivers::All => {
         match l.action_type {
           @jinro.ActionType::Unknown => {
-            if l.target == Some(h) && l.result == Some("dead") {
-              has_public = true
+            if l.target == Some(h) {
+              match l.result {
+                Some(@jinro.LogResult::Dead) => has_public = true
+                _ => ()
+              }
             }
           }
           _ => ()
@@ -215,8 +230,11 @@ test {
       @jinro.Receivers::Afterall => {
         match l.action_type {
           @jinro.ActionType::HamsterCurse => {
-            if l.target == Some(h) && l.result == Some("dead") {
-              has_afterall = true
+            if l.target == Some(h) {
+              match l.result {
+                Some(@jinro.LogResult::Dead) => has_afterall = true
+                _ => ()
+              }
             }
           }
           _ => ()
@@ -352,17 +370,25 @@ test {
 
   if not(r1.deaths.length() == 2) { panic() }
 
-  fn find_reason(deaths: Array[@jinro.DeathRecord], id: String) -> String? {
-    for d in deaths {
-      if d.creature_id == id {
-        return Some(d.reason)
+  let mut p_reason_ok = false
+  let mut l_reason_ok = false
+  for d in r1.deaths {
+    if d.creature_id == p {
+      match d.reason {
+        @jinro.ActionType::Bite => p_reason_ok = true
+        _ => ()
       }
     }
-    None
+    if d.creature_id == l {
+      match d.reason {
+        @jinro.ActionType::LoversSuicide => l_reason_ok = true
+        _ => ()
+      }
+    }
   }
 
-  if not(find_reason(r1.deaths, p) == Some("bite")) { panic() }
-  if not(find_reason(r1.deaths, l) == Some("lovers_suicide")) { panic() }
+  if not(p_reason_ok) { panic() }
+  if not(l_reason_ok) { panic() }
 }
 
 test {
