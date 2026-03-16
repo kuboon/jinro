@@ -1,139 +1,142 @@
 package kuboon:jinro;
 
 interface engine {
-	type creature-id = string;
+  type creature-id = string;
 
-	enum team {
-		villagers,
-		wolves,
-		hamsters,
-		lovers,
-	}
+  enum team {
+    villagers,
+    wolves,
+    hamsters,
+    lovers,
+  }
 
-	enum action-type {
-		vote,
-		bite,
-		divine,
-		medium,
-		guard,
-		hamster-curse,
-		love,
-		lovers-suicide,
-		fake-love,
-	}
+  enum action-type {
+    vote,
+    bite,
+    divine,
+    medium,
+    guard,
+    hamster-curse,
+    love,
+    lovers-suicide,
+    fake-love,
+  }
 
-	enum cause-of-death {
-		executed,
-		found-dead,
-	}
+  enum cause-of-death {
+    executed,
+    found-dead,
+  }
 
-	enum role-type {
-		villager,
-		seer,
-		bodyguard,
-		wolf,
-		madman,
-		lover,
-		bitch,
-		medium,
-		hamster,
-	}
+  enum role-type {
+    villager,
+    seer,
+    bodyguard,
+    wolf,
+    madman,
+    lover,
+    bitch,
+    medium,
+    hamster,
+  }
 
-	variant receivers {
-		all,
-		afterall,
-		only(list<creature-id>),
-	}
+  variant receivers {
+    all,
+    afterall,
+    only(list<creature-id>),
+  }
 
-	variant log-result {
-		dead,
-		guarded,
-		partnered,
-		wolf,
-		non-wolf,
-	}
+  variant log-result {
+    dead,
+    guarded,
+    partnered,
+    wolf,
+    non-wolf,
+  }
 
   variant vote-rule {
     public,
     private,
   }
 
-	record rule {
-		vote: vote-rule,
-	}
+  record rule {
+    vote: vote-rule,
+  }
 
-	type opts-entry = tuple<string, string>;
-	type opts = list<opts-entry>;
+  type opts-entry = tuple<string, string>;
+  type opts = list<opts-entry>;
 
-	record role {
-		role-type: role-type,
-		opts: opts,
-	}
+  record role {
+    role-type: role-type,
+    opts: opts,
+  }
 
-	record creature {
-		id: creature-id,
-		role: role,
-	}
+  record creature {
+    id: creature-id,
+    role: role,
+  }
 
-	record action {
-		actor: creature-id,
-		action-type: action-type,
-		target: option<creature-id>,
-	}
+  record action {
+    actor: creature-id,
+    action-type: action-type,
+    target: option<creature-id>,
+  }
 
-	record log {
-		receivers: receivers,
-		action-type: action-type,
-		actor: option<creature-id>,
-		target: option<creature-id>,
-		log-result: option<log-result>,
-	}
+  type log-id = string;
+  record log {
+    id: log-id,
+    receivers: receivers,
+    action-type: action-type,
+    actor: option<creature-id>,
+    target: option<creature-id>,
+    log-result: option<log-result>,
+  }
 
-	record day {
-		day-number: s32,
-		actions: list<action>,
-		logs: list<log>,
-	}
+  record day {
+    day-number: s32,
+    actions: list<action>,
+    logs: list<log>,
+  }
 
-	record village {
-		rule: rule,
-		creatures: list<creature>,
-		days: list<day>,
-	}
+  record village {
+    rule: rule,
+    creatures: list<creature>,
+    days: list<day>,
+  }
 
-	record available-action {
-		action-type: action-type,
-		targets: list<creature-id>,
-	}
+  record available-action {
+    action-type: action-type,
+    targets: list<creature-id>,
+  }
 
-	record creature-status {
-		id: creature-id,
-		role-type: role-type,
-		team: team,
-		available-actions: list<available-action>,
-		cause-of-death: option<cause-of-death>,
-	}
+  record creature-status {
+    id: creature-id,
+    role-type: role-type,
+    team: team,
+    available-actions: list<available-action>,
+    cause-of-death: option<cause-of-death>,
+    log-ids: list<log-id>,
+  }
 
-	record today {
-		day-number: s32,
-		winner: option<team>,
-		creature-statuses: list<creature-status>,
-	}
+  record today {
+    day-number: s32,
+    winner: option<team>,
+    creature-statuses: list<creature-status>,
+  }
 
-	record day-result {
+  record day-result {
     voted: creature-id,
     deads: list<creature-id>,
-		logs: list<log>,
-	}
+    logs: list<log>,
+  }
 
-	variant data-error {
-		data-error(string),
-	}
+  variant data-error {
+    data-error(string),
+  }
 
-	create-village: func(roles: list<role>, rule: rule) -> result<tuple<village, today>, data-error>;
-	process-day: func(village: village, actions: list<action>) -> result<tuple<day-result, village, today>, data-error>;
+  create-village: func(roles: list<role>, rule: rule) -> result<tuple<village, today>, data-error>;
+  process-day: func(village: village, actions: list<action>) -> result<tuple<day-result, village, today>, data-error>;
 }
 
 world jinro-world {
-	export engine;
+  export engine;
 }
