@@ -1,0 +1,268 @@
+{
+  "source_dir": "/workspaces/jinro",
+  "name": "kuboon/jinro",
+  "packages": [
+    {
+      "is-main": false,
+      "is-third-party": false,
+      "root-path": "/workspaces/jinro/gen",
+      "root": "kuboon/jinro",
+      "rel": "gen",
+      "files": {
+        "/workspaces/jinro/gen/ffi.mbt": {
+          "backend": [
+            "Wasm",
+            "WasmGC",
+            "Js",
+            "Native",
+            "LLVM"
+          ],
+          "optlevel": [
+            "Release",
+            "Debug"
+          ]
+        },
+        "/workspaces/jinro/gen/gen_interface_kuboon_jinro_engine_export.mbt": {
+          "backend": [
+            "Wasm",
+            "WasmGC",
+            "Js",
+            "Native",
+            "LLVM"
+          ],
+          "optlevel": [
+            "Release",
+            "Debug"
+          ]
+        },
+        "/workspaces/jinro/gen/world_jinro_world_export.mbt": {
+          "backend": [
+            "Wasm",
+            "WasmGC",
+            "Js",
+            "Native",
+            "LLVM"
+          ],
+          "optlevel": [
+            "Release",
+            "Debug"
+          ]
+        }
+      },
+      "wbtest-files": {},
+      "test-files": {},
+      "mbt-md-files": {},
+      "deps": [
+        {
+          "path": "kuboon/jinro/gen/interface/kuboon/jinro/engine",
+          "alias": "engine",
+          "fspath": "/workspaces/jinro/gen/interface/kuboon/jinro/engine"
+        },
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/vscode/.moon/lib/core/prelude"
+        }
+      ],
+      "wbtest-deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/vscode/.moon/lib/core/prelude"
+        }
+      ],
+      "test-deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/vscode/.moon/lib/core/prelude"
+        }
+      ],
+      "artifact": "/workspaces/jinro/_build/wasm/release/check/gen/gen.mi"
+    },
+    {
+      "is-main": false,
+      "is-third-party": false,
+      "root-path": "/workspaces/jinro/gen/interface/kuboon/jinro/engine",
+      "root": "kuboon/jinro",
+      "rel": "gen/interface/kuboon/jinro/engine",
+      "files": {
+        "/workspaces/jinro/gen/interface/kuboon/jinro/engine/stub.mbt": {
+          "backend": [
+            "Wasm",
+            "WasmGC",
+            "Js",
+            "Native",
+            "LLVM"
+          ],
+          "optlevel": [
+            "Release",
+            "Debug"
+          ]
+        },
+        "/workspaces/jinro/gen/interface/kuboon/jinro/engine/top.mbt": {
+          "backend": [
+            "Wasm",
+            "WasmGC",
+            "Js",
+            "Native",
+            "LLVM"
+          ],
+          "optlevel": [
+            "Release",
+            "Debug"
+          ]
+        }
+      },
+      "wbtest-files": {},
+      "test-files": {},
+      "mbt-md-files": {},
+      "deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/vscode/.moon/lib/core/prelude"
+        }
+      ],
+      "wbtest-deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/vscode/.moon/lib/core/prelude"
+        }
+      ],
+      "test-deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/vscode/.moon/lib/core/prelude"
+        }
+      ],
+      "artifact": "/workspaces/jinro/_build/wasm/release/check/gen/interface/kuboon/jinro/engine/engine.mi"
+    },
+    {
+      "is-main": false,
+      "is-third-party": false,
+      "root-path": "/workspaces/jinro/gen/world/jinroWorld",
+      "root": "kuboon/jinro",
+      "rel": "gen/world/jinroWorld",
+      "files": {
+        "/workspaces/jinro/gen/world/jinroWorld/stub.mbt": {
+          "backend": [
+            "Wasm",
+            "WasmGC",
+            "Js",
+            "Native",
+            "LLVM"
+          ],
+          "optlevel": [
+            "Release",
+            "Debug"
+          ]
+        }
+      },
+      "wbtest-files": {},
+      "test-files": {},
+      "mbt-md-files": {},
+      "deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/vscode/.moon/lib/core/prelude"
+        }
+      ],
+      "wbtest-deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/vscode/.moon/lib/core/prelude"
+        }
+      ],
+      "test-deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/vscode/.moon/lib/core/prelude"
+        }
+      ],
+      "artifact": "/workspaces/jinro/_build/wasm/release/check/gen/world/jinroWorld/jinroWorld.mi"
+    },
+    {
+      "is-main": false,
+      "is-third-party": false,
+      "root-path": "/workspaces/jinro/world/jinroWorld",
+      "root": "kuboon/jinro",
+      "rel": "world/jinroWorld",
+      "files": {
+        "/workspaces/jinro/world/jinroWorld/ffi_import.mbt": {
+          "backend": [
+            "Wasm",
+            "WasmGC",
+            "Js",
+            "Native",
+            "LLVM"
+          ],
+          "optlevel": [
+            "Release",
+            "Debug"
+          ]
+        },
+        "/workspaces/jinro/world/jinroWorld/import.mbt": {
+          "backend": [
+            "Wasm",
+            "WasmGC",
+            "Js",
+            "Native",
+            "LLVM"
+          ],
+          "optlevel": [
+            "Release",
+            "Debug"
+          ]
+        },
+        "/workspaces/jinro/world/jinroWorld/top.mbt": {
+          "backend": [
+            "Wasm",
+            "WasmGC",
+            "Js",
+            "Native",
+            "LLVM"
+          ],
+          "optlevel": [
+            "Release",
+            "Debug"
+          ]
+        }
+      },
+      "wbtest-files": {},
+      "test-files": {},
+      "mbt-md-files": {},
+      "deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/vscode/.moon/lib/core/prelude"
+        }
+      ],
+      "wbtest-deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/vscode/.moon/lib/core/prelude"
+        }
+      ],
+      "test-deps": [
+        {
+          "path": "moonbitlang/core/prelude",
+          "alias": "prelude",
+          "fspath": "/home/vscode/.moon/lib/core/prelude"
+        }
+      ],
+      "artifact": "/workspaces/jinro/_build/wasm/release/check/world/jinroWorld/jinroWorld.mi"
+    }
+  ],
+  "deps": [],
+  "backend": "wasm",
+  "opt_level": "release",
+  "source": null
+}

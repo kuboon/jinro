@@ -10,7 +10,8 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"moonbit.moonbit-lang"
+				"moonbit.moonbit-lang",
+				"bytecodealliance.wit-idl"
 			]
 		}
 	},

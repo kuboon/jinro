@@ -1,4 +1,6 @@
 [tools]
+"cargo:wasm-tools" = "latest"
+"cargo:wit-bindgen-cli" = "latest"
 deno = "latest"
 node = "latest"
 rust = "latest"

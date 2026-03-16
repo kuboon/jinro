@@ -1,0 +1,12 @@
+
+{
+      "link": {
+            "wasm": {
+                  "exports": ["mbt_ffi_cabi_realloc:cabi_realloc", "wasmExportCreateVillage:kuboon:jinro/engine#create-village", "wasmExportCreateVillagePostReturn:cabi_post_kuboon:jinro/engine#create-village", "wasmExportProcessDay:kuboon:jinro/engine#process-day", "wasmExportProcessDayPostReturn:cabi_post_kuboon:jinro/engine#process-day"],
+                  "export-memory-name": "memory",
+                  "heap-start-address": 16
+            }
+      }
+      ,"import": [{ "path" : "kuboon/jinro/gen/interface/kuboon/jinro/engine", "alias" : "engine" }]
+      , "warn-list": "-44"
+}
