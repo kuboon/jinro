@@ -40,6 +40,7 @@ pub(all) enum ActionType {
   LOVE
   LOVERS_SUICIDE
   FAKE_LOVE
+  UNKNOWN
 } derive(Show, Eq)
 
 ///|
@@ -54,6 +55,7 @@ pub fn ActionType::ordinal(self : ActionType) -> Int {
     LOVE => 6
     LOVERS_SUICIDE => 7
     FAKE_LOVE => 8
+    UNKNOWN => 9
   }
 }
 
@@ -69,6 +71,7 @@ pub fn ActionType::from(self : Int) -> ActionType {
     6 => LOVE
     7 => LOVERS_SUICIDE
     8 => FAKE_LOVE
+    9 => UNKNOWN
     _ => panic()
   }
 }
