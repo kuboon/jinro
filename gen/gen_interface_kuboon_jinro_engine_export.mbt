@@ -608,7 +608,7 @@ pub fn wasmExportProcessDay(
       }
 
       array19.push(@engine.Log::{
-        receivers: lifted12,
+        id: "", receivers: lifted12,
         action_type: @engine.ActionType::from(mbt_ffi_load8_u(iter_base + 12)),
         actor: lifted14,
         target: lifted16,
