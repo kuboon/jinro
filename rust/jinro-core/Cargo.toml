@@ -1,0 +1,14 @@
+[package]
+name = "jinro-core"
+version = "0.1.0"
+edition = "2021"
+description = "Werewolf (jinro) rule engine core, written in an Aeneas-friendly subset of Rust"
+license = "MIT"
+
+[dependencies]
+
+[features]
+# Debug/PartialEq derives for tests and the wasm wrapper.
+# Charon runs with --no-default-features so the verified code stays minimal.
+default = ["derive"]
+derive = []

@@ -1,0 +1,13 @@
+[package]
+name = "jinro-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "WASM component exposing jinro-core through wit/world.wit"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+jinro-core = { path = "../jinro-core" }
+wit-bindgen = "0.63.0"

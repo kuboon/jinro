@@ -1,0 +1,89 @@
+name: rust + aeneas
+
+on:
+  push:
+    paths: ["rust/**", ".github/workflows/rust-aeneas.yml"]
+  pull_request:
+    paths: ["rust/**", ".github/workflows/rust-aeneas.yml"]
+  workflow_dispatch:
+
+env:
+  AENEAS_RELEASE: nightly-2026.11.07-c5eb4a2
+  # Must match `rust-toolchain` inside the Aeneas release tarball.
+  CHARON_TOOLCHAIN: nightly-2026-09-17
+
+jobs:
+  test-and-wasm:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add wasm32-wasip2
+      - run: cargo test -p jinro-core
+      - run: cargo build -p jinro-wasm --target wasm32-wasip2 --release
+      - name: Size
+        run: ls -l target/wasm32-wasip2/release/jinro_wasm.wasm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jinro-wasm
+          path: rust/target/wasm32-wasip2/release/jinro_wasm.wasm
+
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Aeneas + Charon (prebuilt release)
+        run: |
+          mkdir -p "$HOME/aeneas"
+          curl -sSL "https://github.com/AeneasVerif/aeneas/releases/download/${AENEAS_RELEASE}/aeneas-linux-x86_64.tar.gz" \
+            | tar xz -C "$HOME/aeneas"
+          echo "$HOME/aeneas" >> "$GITHUB_PATH"
+
+      - name: Install Charon's pinned nightly
+        run: rustup toolchain install "$CHARON_TOOLCHAIN" --profile minimal -c rustc-dev,llvm-tools,rust-src,miri
+
+      - name: Rust -> LLBC (Charon)
+        working-directory: rust
+        run: charon cargo --preset=aeneas --dest-file jinro_core.llbc -- -p jinro-core --no-default-features
+
+      - name: LLBC -> Lean (Aeneas)
+        working-directory: rust
+        run: |
+          rm -rf aeneas-out && mkdir aeneas-out
+          aeneas -backend lean -dest aeneas-out jinro_core.llbc
+          ls -l aeneas-out
+          f=$(ls aeneas-out/*.lean)
+          test "$(echo "$f" | wc -l)" = 1
+          cp "$f" lean/Jinro/Core.lean
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aeneas-lean
+          path: |
+            rust/jinro_core.llbc
+            rust/lean/Jinro/Core.lean
+
+      - name: Install elan
+        run: |
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.1.2/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./elan-init -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/cache@v4
+        with:
+          path: rust/lean/.lake
+          key: lake-${{ hashFiles('rust/lean/lakefile.lean', 'rust/lean/lean-toolchain') }}
+
+      - name: Fetch Lean deps (Mathlib cache)
+        working-directory: rust/lean
+        run: |
+          lake update
+          lake exe cache get
+
+      - name: Check proofs
+        working-directory: rust/lean
+        run: lake build
